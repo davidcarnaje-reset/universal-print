@@ -1,8 +1,12 @@
 {
-  "name": "universal-print-editor",
+  "name": "printflow",
+  "productName": "PrintFlow",
+  "version": "1.0.0",
+  "description": "Universal Print Layout Editor for Cross-Brand Printers",
+  "author": "David Josh Carnaje",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
@@ -12,6 +16,7 @@
   "dependencies": {
     "fabric": "^7.4.0",
     "jspdf": "^4.2.1",
+    "lucide-react": "^0.359.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-dropzone": "^15.0.0"
@@ -35,6 +40,5 @@
     "vite": "^8.0.16",
     "vite-plugin-electron": "^0.28.6",
     "vite-plugin-electron-renderer": "^0.14.7"
-  },
-  "main": "dist-electron/main.js"
+  }
 }
