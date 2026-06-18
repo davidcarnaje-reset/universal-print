@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import React, { useEffect, useRef } from 'react'
-import { Canvas, FabricImage, Rect, FabricText, Group } from 'fabric'
+import { Canvas, FabricImage, Rect, FabricText, Group, LayoutManager } from 'fabric'
 import { IDPreviewModal } from './IDPreviewModal'
+
+class NoopLayoutManager extends LayoutManager {
+  performLayout() {
+    // No-op to prevent Fabric from modifying coordinates
+  }
+}
 
 interface IDWorkspaceProps {
   paperWidthMM: number
@@ -200,34 +206,71 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
         const copies2x2 = customCopies['2x2'] || 0
         const copies3x3 = customCopies['3x3'] || 0
 
-        interface MixedIDItem { width: number; height: number; type: string; }
+        interface MixedIDItem {
+          width: number;
+          height: number;
+          type: string;
+          computedX?: number;
+          computedY?: number;
+        }
         const itemsToRender: MixedIDItem[] = []
 
         for (let i = 0; i < copies3x3; i++) itemsToRender.push({ width: 76.2, height: 76.2, type: '3x3' })
         for (let i = 0; i < copies2x2; i++) itemsToRender.push({ width: 50.8, height: 50.8, type: '2x2' })
         for (let i = 0; i < copies1x1; i++) itemsToRender.push({ width: 25.4, height: 25.4, type: '1x1' })
 
-        let currentX = 0
-        let currentY = 0
-        let maxRowHeight = 0
-        const spacing = spacingMm * CANVAS_SCALE
+        // Sort descending so large photos allocate slots first
+        const sortedItems = [...itemsToRender].sort((a, b) => b.height - a.height)
+
+        interface Row {
+          y: number;
+          height: number;
+          currentX: number;
+        }
+
+        const rowsList: Row[] = []
+        const spacingPx = spacingMm * CANVAS_SCALE
         const maxRowWidth = usableW
 
-        for (const item of itemsToRender) {
+        sortedItems.forEach((item) => {
           const itemW = item.width * CANVAS_SCALE
           const itemH = item.height * CANVAS_SCALE
 
-          // Check if adding this item exceeds the width of the page shelf
-          if (currentX + itemW > maxRowWidth && currentX > 0) {
-            // Wrap to the next row safely
-            currentX = 0
-            currentY += maxRowHeight + spacing
-            maxRowHeight = 0 // Reset height tracker for the new shelf row
+          let placed = false
+          for (const r of rowsList) {
+            if (r.currentX + itemW <= maxRowWidth) {
+              item.computedX = r.currentX
+              item.computedY = r.y
+              r.currentX += itemW + spacingPx
+              placed = true
+              break
+            }
           }
 
-          // Set the absolute local positions for the image object
-          const pxX = currentX
-          const pxY = currentY
+          if (!placed) {
+            let nextY = 0
+            if (rowsList.length > 0) {
+              const lastRow = rowsList[rowsList.length - 1]
+              nextY = lastRow.y + lastRow.height + spacingPx
+            }
+
+            const newRow: Row = {
+              y: nextY,
+              height: itemH,
+              currentX: itemW + spacingPx
+            }
+
+            item.computedX = 0
+            item.computedY = nextY
+            rowsList.push(newRow)
+          }
+        })
+
+        sortedItems.forEach((item) => {
+          const itemW = item.width * CANVAS_SCALE
+          const itemH = item.height * CANVAS_SCALE
+          const pxX = item.computedX ?? 0
+          const pxY = item.computedY ?? 0
 
           const targetAspectRatio = item.width / item.height
           const imgAspectRatio = imgElement.width / imgElement.height
@@ -263,11 +306,7 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
           })
 
           idObjectsArray.push(idImg)
-
-          // Advance the horizontal pointer and track the tallest element on this shelf
-          currentX += itemW + spacing
-          if (itemH > maxRowHeight) maxRowHeight = itemH
-        }
+        })
       } else {
         const totalGridWidth = (cols * idWidthMm) + ((cols - 1) * spacingMm)
         const totalGridHeight = (rows * idHeightMm) + ((rows - 1) * spacingMm)
@@ -323,27 +362,61 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
       }
 
       // Wrap all individual items into a single non-interactable strict structural set
-      const finalCenteredGroup = new Group(idObjectsArray, {
-        id: 'id-photo-item',
-        selectable: false,
-        evented: false,
-        subTargetCheck: false,
-        objectCaching: false
-      } as any);
+      let finalCenteredGroup: Group
 
-      // 2. FORCE NATIVE RELATIVE OVERRIDE
-      // To fix the double translation layout shift bug, tell Fabric to reset the positions inside:
-      idObjectsArray.forEach(obj => {
-        // Force sub-objects to respect their absolute rendering pixels context
-        obj.setCoords();
-      });
+      if (isCustomMode) {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+        idObjectsArray.forEach((obj) => {
+          const left = obj.left
+          const top = obj.top
+          const w = obj.width * obj.scaleX
+          const h = obj.height * obj.scaleY
+          if (left < minX) minX = left
+          if (top < minY) minY = top
+          if (left + w > maxX) maxX = left + w
+          if (top + h > maxY) maxY = top + h
+        })
+        const groupWidth = maxX - minX
+        const groupHeight = maxY - minY
 
-      // 3. SECURE CORE CANVAS CENTERING
-      // Snaps the combined bounding box strictly onto the center of the viewport paper sheet
-      canvas.centerObject(finalCenteredGroup);
+        finalCenteredGroup = new Group(idObjectsArray, {
+          id: 'id-photo-item',
+          selectable: false,
+          evented: false,
+          subTargetCheck: false,
+          objectCaching: false,
+          originX: 'left',
+          originY: 'top',
+          width: groupWidth,
+          height: groupHeight,
+          layoutManager: new NoopLayoutManager(),
+          layout: 'none'
+        } as any)
+      } else {
+        finalCenteredGroup = new Group(idObjectsArray, {
+          id: 'id-photo-item',
+          selectable: false,
+          evented: false,
+          subTargetCheck: false,
+          objectCaching: false
+        } as any)
 
-      canvas.add(finalCenteredGroup);
-      canvas.renderAll(); // Force synchronous render
+        if (typeof (finalCenteredGroup as any).triggerLayout === 'function') {
+          (finalCenteredGroup as any).triggerLayout()
+        } else if (typeof (finalCenteredGroup as any).addWithUpdate === 'function') {
+          (finalCenteredGroup as any).addWithUpdate()
+        }
+      }
+
+      // 3. FORCE PERFECT CANVAS BALANCED CENTERING
+      // This snaps the unified group package straight onto the physical center of the paper sheet.
+      canvas.centerObject(finalCenteredGroup)
+      
+      // Ensure coords are baked perfectly
+      finalCenteredGroup.setCoords()
+
+      canvas.add(finalCenteredGroup)
+      canvas.renderAll() // Force synchronous render
 
       const workspaceSnapshotUrl = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
       setPreviewImage(workspaceSnapshotUrl);

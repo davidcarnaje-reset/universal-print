@@ -89,38 +89,70 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
       const copies2x2 = customCopies['2x2'] || 0
       const copies3x3 = customCopies['3x3'] || 0
 
-      interface MixedIDItem { width: number; height: number; type: string; }
+      interface MixedIDItem {
+        width: number;
+        height: number;
+        type: string;
+      }
       const itemsToRender: MixedIDItem[] = []
 
       for (let i = 0; i < copies3x3; i++) itemsToRender.push({ width: 76.2, height: 76.2, type: '3x3' })
       for (let i = 0; i < copies2x2; i++) itemsToRender.push({ width: 50.8, height: 50.8, type: '2x2' })
       for (let i = 0; i < copies1x1; i++) itemsToRender.push({ width: 25.4, height: 25.4, type: '1x1' })
 
-      let currentX = 0
-      let currentY = 0
-      let maxRowHeight = 0
+      // Sort descending so large photos allocate slots first
+      const sortedItems = [...itemsToRender].sort((a, b) => b.height - a.height)
+
+      interface Row {
+        y: number;
+        height: number;
+        currentX: number;
+      }
+
+      const rowsList: Row[] = []
       const spacing = spacingMm
       const maxRowWidth = paperWidthMM - 2 * safetyMarginMM
 
       const initialPlacements: { x: number; y: number; width: number; height: number }[] = []
 
-      for (const item of itemsToRender) {
-        if (currentX + item.width > maxRowWidth && currentX > 0) {
-          currentX = 0
-          currentY += maxRowHeight + spacing
-          maxRowHeight = 0
+      sortedItems.forEach((item) => {
+        let placed = false
+        for (const r of rowsList) {
+          if (r.currentX + item.width <= maxRowWidth) {
+            initialPlacements.push({
+              x: r.currentX,
+              y: r.y,
+              width: item.width,
+              height: item.height
+            })
+            r.currentX += item.width + spacing
+            placed = true
+            break
+          }
         }
 
-        initialPlacements.push({
-          x: currentX,
-          y: currentY,
-          width: item.width,
-          height: item.height
-        })
+        if (!placed) {
+          let nextY = 0
+          if (rowsList.length > 0) {
+            const lastRow = rowsList[rowsList.length - 1]
+            nextY = lastRow.y + lastRow.height + spacing
+          }
 
-        currentX += item.width + spacing
-        if (item.height > maxRowHeight) maxRowHeight = item.height
-      }
+          const newRow: Row = {
+            y: nextY,
+            height: item.height,
+            currentX: item.width + spacing
+          }
+
+          initialPlacements.push({
+            x: 0,
+            y: nextY,
+            width: item.width,
+            height: item.height
+          })
+          rowsList.push(newRow)
+        }
+      })
 
       if (initialPlacements.length > 0) {
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
