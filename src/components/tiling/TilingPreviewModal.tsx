@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { jsPDF } from 'jspdf'
 import './TilingPreviewModal.css'
+import { isNativeApp } from '../../utils/env'
 
 interface ImageTransform {
   left: number
@@ -659,20 +660,32 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
 
           {/* Action Export Buttons */}
           <div className="footer-actions">
-            <button 
-              className="preview-action-btn secondary" 
-              onClick={handleSavePDF}
-              disabled={isExporting || !uploadedImage}
-            >
-              {isExporting ? 'Exporting...' : 'Save as PDF'}
-            </button>
-            <button 
-              className="preview-action-btn primary" 
-              onClick={handlePrintNow}
-              disabled={isExporting || !uploadedImage}
-            >
-              {isExporting ? 'Exporting...' : 'Print Now'}
-            </button>
+            {isNativeApp ? (
+              <>
+                <button 
+                  className="preview-action-btn secondary" 
+                  onClick={handleSavePDF}
+                  disabled={isExporting || !uploadedImage}
+                >
+                  {isExporting ? 'Exporting...' : 'Save as PDF'}
+                </button>
+                <button 
+                  className="preview-action-btn primary" 
+                  onClick={handlePrintNow}
+                  disabled={isExporting || !uploadedImage}
+                >
+                  {isExporting ? 'Exporting...' : 'Print Now'}
+                </button>
+              </>
+            ) : (
+              <button 
+                className="preview-action-btn primary" 
+                onClick={handleSavePDF}
+                disabled={isExporting || !uploadedImage}
+              >
+                {isExporting ? 'Exporting...' : 'Save as PDF'}
+              </button>
+            )}
           </div>
         </footer>
 

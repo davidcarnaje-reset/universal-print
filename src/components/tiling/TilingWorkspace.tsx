@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useCallback } from 'react'
 import { Canvas, FabricImage, Line, FabricText } from 'fabric'
 import { TilingPreviewModal } from './TilingPreviewModal'
+import { isNativeApp } from '../../utils/env'
 
 interface TilingWorkspaceProps {
   paperWidthMM: number
@@ -236,14 +237,27 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
             </div>
           )}
           
-          {uploadedImage && (
+          {(!isNativeApp || uploadedImage) && (
             <div className="workspace-actions">
-              <button 
-                onClick={() => setIsPreviewOpen(true)} 
-                className="action-btn btn-print"
-              >
-                Preview Poster
-              </button>
+              {!isNativeApp && (
+                <a 
+                  href="https://github.com/davidjosh/printflow/releases" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="action-btn btn-pdf"
+                  style={{ textDecoration: 'none', gap: '0.35rem' }}
+                >
+                  📥 Download App
+                </a>
+              )}
+              {uploadedImage && (
+                <button 
+                  onClick={() => setIsPreviewOpen(true)} 
+                  className="action-btn btn-print"
+                >
+                  Preview Poster
+                </button>
+              )}
             </div>
           )}
         </div>

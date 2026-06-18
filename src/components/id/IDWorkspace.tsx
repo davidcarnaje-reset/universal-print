@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from 'react'
 import { Canvas, FabricImage, Rect, FabricText, Group } from 'fabric'
 import { IDPreviewModal } from './IDPreviewModal'
+import { isNativeApp } from '../../utils/env'
 
 interface IDWorkspaceProps {
   paperWidthMM: number
@@ -277,14 +278,27 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
             </div>
           )}
           
-          {uploadedImage && (
+          {(!isNativeApp || uploadedImage) && (
             <div className="workspace-actions">
-              <button 
-                onClick={() => setIsPreviewOpen(true)} 
-                className="action-btn btn-print"
-              >
-                Preview Sheet
-              </button>
+              {!isNativeApp && (
+                <a 
+                  href="https://github.com/davidjosh/printflow/releases" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="action-btn btn-pdf"
+                  style={{ textDecoration: 'none', gap: '0.35rem' }}
+                >
+                  📥 Download App
+                </a>
+              )}
+              {uploadedImage && (
+                <button 
+                  onClick={() => setIsPreviewOpen(true)} 
+                  className="action-btn btn-print"
+                >
+                  Preview Sheet
+                </button>
+              )}
             </div>
           )}
         </div>

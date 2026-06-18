@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
+import { isNativeApp } from '../../utils/env'
 
 interface PaperDimension {
   width: number
@@ -117,6 +118,41 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
       </div>
 
       <div className="sidebar-scrollable">
+        {!isNativeApp && (
+          <a 
+            href="https://github.com/davidjosh/printflow/releases" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="download-desktop-card"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(79, 70, 229, 0.15))',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
+              borderRadius: '10px',
+              padding: '0.75rem 1rem',
+              color: '#a5b4fc',
+              textDecoration: 'none',
+              fontSize: '0.85rem',
+              fontWeight: '600',
+              textAlign: 'center',
+              transition: 'all 0.2s ease',
+              marginBottom: '-0.5rem'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.6)';
+              e.currentTarget.style.boxShadow = '0 0 12px rgba(99, 102, 241, 0.25)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.3)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            📥 Download Desktop App
+          </a>
+        )}
         {/* Paper Size Settings */}
         <section className="sidebar-section">
           <h2 className="section-title">Paper Setup</h2>
