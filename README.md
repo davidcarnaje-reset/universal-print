@@ -53,5 +53,5 @@ The app will run locally at `http://localhost:5173`.
 
 ## 🌐 Distribution Channels
 
-*   **Web Application (Vercel):** Deployed live and tracked via Vercel at [https://printflow-editor.vercel.app](https://printflow-editor.vercel.app).
+*   **Web Application (Vercel):** Deployed live and tracked via Vercel at [https://printflow-editor.vercel.app](https://universal-print-d9up2w9nl-djc-57c9bec2.vercel.app/).
 *   **Native Windows Installer:** Cross-linked directly to the Native Windows Installer tracking repository section under [/releases](https://github.com/davidjosh/printflow/releases).
