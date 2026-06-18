@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState } from 'react'
 import { jsPDF } from 'jspdf'
 import '../tiling/TilingPreviewModal.css' // Reuse the same premium modal CSS layout
 
@@ -10,14 +10,18 @@ interface IDPreviewModalProps {
   paperWidthMM: number
   paperHeightMM: number
   orientation: 'portrait' | 'landscape'
-  idSize: '1x1' | '2x2' | 'passport'
+  idSize: '1x1' | '2x2' | '3x3' | 'passport' | 'custom'
   idSpacing: number
+  previewImage: string | null
+  customCopies: Record<'1x1' | '2x2' | '3x3', number>
 }
 
 const ID_SIZES = {
   "1x1": { width: 25.4, height: 25.4, label: "1\" x 1\" (25.4 x 25.4 mm)" },
   "2x2": { width: 50.8, height: 50.8, label: "2\" x 2\" (50.8 x 50.8 mm)" },
-  "passport": { width: 35.0, height: 45.0, label: "Passport (35 x 45 mm)" }
+  "3x3": { width: 76.2, height: 76.2, label: "3\" x 3\" (76.2 x 76.2 mm) (Visa)" },
+  "passport": { width: 35.0, height: 45.0, label: "Passport (35 x 45 mm)" },
+  "custom": { width: 0, height: 0, label: "Custom (Mixed Layout)" }
 }
 
 export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
@@ -28,133 +32,24 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
   paperHeightMM,
   orientation,
   idSize,
-  idSpacing
+  idSpacing,
+  previewImage,
+  customCopies
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [previewZoom, setPreviewZoom] = useState<number>(0.65)
   const [isExporting, setIsExporting] = useState<boolean>(false)
-  const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
 
   // Sizing definitions
-  const idDef = ID_SIZES[idSize]
+  const idDef = ID_SIZES[idSize] || ID_SIZES["2x2"]
   const idWidthMm = idDef.width
   const idHeightMm = idDef.height
   const safetyMarginMM = 5
   const spacingMm = idSpacing
 
-  const cols = Math.max(0, Math.floor((paperWidthMM - 2 * safetyMarginMM + spacingMm) / (idWidthMm + spacingMm)))
-  const rows = Math.max(0, Math.floor((paperHeightMM - 2 * safetyMarginMM + spacingMm) / (idHeightMm + spacingMm)))
+  const isCustomMode = idSize === 'custom'
 
-  // Canvas drawing scale (constant for crisp rendering)
-  const P = 2.0
-
-  // Load image element
-  useEffect(() => {
-    if (!uploadedImage) {
-      setImageElement(null)
-      return
-    }
-
-    const img = new Image()
-    img.onload = () => setImageElement(img)
-    img.onerror = (err) => console.error('Failed to load image in IDPreviewModal:', err)
-    img.src = uploadedImage
-  }, [uploadedImage])
-
-  // Canvas drawing effect
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    // Clear and draw white background
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, paperWidthMM * P, paperHeightMM * P)
-
-    const marginPx = safetyMarginMM * P
-
-    const usableW = (paperWidthMM - 2 * safetyMarginMM) * P
-    const usableH = (paperHeightMM - 2 * safetyMarginMM) * P
-
-    // Draw safety margins dashed rect
-    ctx.strokeStyle = '#cbd5e1'
-    ctx.lineWidth = 0.5 * P
-    ctx.setLineDash([2 * P, 2 * P])
-    ctx.strokeRect(marginPx, marginPx, usableW, usableH)
-    ctx.setLineDash([]) // Reset
-
-    if (imageElement && cols > 0 && rows > 0) {
-      // Strict physical dimensions conversion
-      const totalGridWidth = (cols * idWidthMm) + ((cols - 1) * spacingMm);
-      const totalGridHeight = (rows * idHeightMm) + ((rows - 1) * spacingMm);
-
-      // Find leftover space and split it equally to get the margins
-      const centerOffsetX = (paperWidthMM - totalGridWidth) / 2;
-      const centerOffsetY = (paperHeightMM - totalGridHeight) / 2;
-
-      const targetAspectRatio = idWidthMm / idHeightMm
-      const imgAspectRatio = imageElement.width / imageElement.height
-      let sx = 0
-      let sy = 0
-      let sWidth = imageElement.width
-      let sHeight = imageElement.height
-
-      if (imgAspectRatio > targetAspectRatio) {
-        sWidth = imageElement.height * targetAspectRatio
-        sx = (imageElement.width - sWidth) / 2
-      } else if (imgAspectRatio < targetAspectRatio) {
-        sHeight = imageElement.width / targetAspectRatio
-        sy = (imageElement.height - sHeight) / 2
-      }
-
-      // Draw fitted ID pictures
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          // Ensure current loop item calculations strictly add the offsets:
-          const finalX = centerOffsetX + (c * (idWidthMm + spacingMm));
-          const finalY = centerOffsetY + (r * (idHeightMm + spacingMm));
-
-          // Convert mm to active canvas pixels using our scale factor
-          const pxX = finalX * P;
-          const pxY = finalY * P;
-          const pxW = idWidthMm * P;
-          const pxH = idHeightMm * P;
-
-          ctx.drawImage(imageElement, sx, sy, sWidth, sHeight, pxX, pxY, pxW, pxH)
-
-          // Thin cutting border
-          ctx.strokeStyle = '#cccccc'
-          ctx.lineWidth = 0.5 * P
-          ctx.strokeRect(pxX, pxY, pxW, pxH)
-        }
-      }
-    } else if (!imageElement) {
-      ctx.fillStyle = '#94a3b8'
-      ctx.font = `${8 * P}px sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('No image loaded', (paperWidthMM * P) / 2, (paperHeightMM * P) / 2)
-    } else {
-      ctx.fillStyle = '#ef4444'
-      ctx.font = `${6 * P}px sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('Paper size too small', (paperWidthMM * P) / 2, (paperHeightMM * P) / 2)
-    }
-  }, [
-    paperWidthMM,
-    paperHeightMM,
-    imageElement,
-    idSize,
-    idSpacing,
-    cols,
-    rows,
-    idWidthMm,
-    idHeightMm,
-    spacingMm,
-    P
-  ])
+  const cols = isCustomMode ? 0 : Math.max(0, Math.floor((paperWidthMM - 2 * safetyMarginMM + spacingMm) / (idWidthMm + spacingMm)))
+  const rows = isCustomMode ? 0 : Math.max(0, Math.floor((paperHeightMM - 2 * safetyMarginMM + spacingMm) / (idHeightMm + spacingMm)))
 
   if (!isOpen) return null
 
@@ -189,7 +84,90 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, pdfWidthPx, pdfHeightPx)
 
-    if (cols > 0 && rows > 0) {
+    if (isCustomMode) {
+      const copies1x1 = customCopies['1x1'] || 0
+      const copies2x2 = customCopies['2x2'] || 0
+      const copies3x3 = customCopies['3x3'] || 0
+
+      interface MixedIDItem { width: number; height: number; type: string; }
+      const itemsToRender: MixedIDItem[] = []
+
+      for (let i = 0; i < copies3x3; i++) itemsToRender.push({ width: 76.2, height: 76.2, type: '3x3' })
+      for (let i = 0; i < copies2x2; i++) itemsToRender.push({ width: 50.8, height: 50.8, type: '2x2' })
+      for (let i = 0; i < copies1x1; i++) itemsToRender.push({ width: 25.4, height: 25.4, type: '1x1' })
+
+      let currentX = 0
+      let currentY = 0
+      let maxRowHeight = 0
+      const spacing = spacingMm
+      const maxRowWidth = paperWidthMM - 2 * safetyMarginMM
+
+      const initialPlacements: { x: number; y: number; width: number; height: number }[] = []
+
+      for (const item of itemsToRender) {
+        if (currentX + item.width > maxRowWidth && currentX > 0) {
+          currentX = 0
+          currentY += maxRowHeight + spacing
+          maxRowHeight = 0
+        }
+
+        initialPlacements.push({
+          x: currentX,
+          y: currentY,
+          width: item.width,
+          height: item.height
+        })
+
+        currentX += item.width + spacing
+        if (item.height > maxRowHeight) maxRowHeight = item.height
+      }
+
+      if (initialPlacements.length > 0) {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+        for (const pos of initialPlacements) {
+          if (pos.x < minX) minX = pos.x
+          if (pos.y < minY) minY = pos.y
+          if (pos.x + pos.width > maxX) maxX = pos.x + pos.width
+          if (pos.y + pos.height > maxY) maxY = pos.y + pos.height
+        }
+
+        const boxWidth = maxX - minX
+        const boxHeight = maxY - minY
+        const shiftX = (paperWidthMM - boxWidth) / 2 - minX
+        const shiftY = (paperHeightMM - boxHeight) / 2 - minY
+
+        for (const pos of initialPlacements) {
+          const finalX = pos.x + shiftX
+          const finalY = pos.y + shiftY
+
+          const pxX = finalX * ratio300
+          const pxY = finalY * ratio300
+          const pxW = pos.width * ratio300
+          const pxH = pos.height * ratio300
+
+          const targetAspectRatio = pos.width / pos.height
+          const imgAspectRatio = img.width / img.height
+          let sx = 0
+          let sy = 0
+          let sWidth = img.width
+          let sHeight = img.height
+
+          if (imgAspectRatio > targetAspectRatio) {
+            sWidth = img.height * targetAspectRatio
+            sx = (img.width - sWidth) / 2
+          } else if (imgAspectRatio < targetAspectRatio) {
+            sHeight = img.width / targetAspectRatio
+            sy = (img.height - sHeight) / 2
+          }
+
+          ctx.drawImage(img, sx, sy, sWidth, sHeight, pxX, pxY, pxW, pxH)
+
+          ctx.strokeStyle = '#cccccc'
+          ctx.lineWidth = 1
+          ctx.strokeRect(pxX, pxY, pxW, pxH)
+        }
+      }
+    } else if (cols > 0 && rows > 0) {
       // Strict physical dimensions conversion
       const totalGridWidth = (cols * idWidthMm) + ((cols - 1) * spacingMm);
       const totalGridHeight = (rows * idHeightMm) + ((rows - 1) * spacingMm);
@@ -294,22 +272,40 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
         <div className="preview-modal-body">
           <div className="preview-matrix-scroll-container">
             <div 
-              className="preview-page-card"
+              className="preview-page-card relative bg-white"
               style={{
                 width: `${paperWidthMM * previewZoom}px`,
                 height: `${paperHeightMM * previewZoom}px`
               }}
             >
-              <canvas
-                ref={canvasRef}
-                width={paperWidthMM * P}
-                height={paperHeightMM * P}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'block'
-                }}
-              />
+              {previewImage ? (
+                <img 
+                  src={previewImage} 
+                  className="absolute inset-0 w-full h-full object-contain" 
+                  alt="ID Sheet Preview" 
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain'
+                  }}
+                />
+              ) : (
+                <div 
+                  className="flex items-center justify-center h-full text-gray-400"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    color: '#94a3b8'
+                  }}
+                >
+                  Loading preview...
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -336,7 +332,7 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
 
             <div className="footer-control-item">
               <span className="value-badge" style={{ padding: '4px 10px', height: 'auto' }}>
-                Layout Format: {idDef.label}
+                Layout Format: {isCustomMode ? `Custom (${customCopies['1x1']}x 1"x1", ${customCopies['2x2']}x 2"x2", ${customCopies['3x3']}x 3"x3")` : idDef.label}
               </span>
             </div>
           </div>

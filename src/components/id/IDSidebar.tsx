@@ -20,7 +20,39 @@ const PAPER_SIZES: Record<string, PaperDimension> = {
 const ID_SIZES = {
   "1x1": { width: 25.4, height: 25.4, label: "1\" x 1\" (25.4 x 25.4 mm)" },
   "2x2": { width: 50.8, height: 50.8, label: "2\" x 2\" (50.8 x 50.8 mm)" },
-  "passport": { width: 35.0, height: 45.0, label: "Passport (35 x 45 mm)" }
+  "3x3": { width: 76.2, height: 76.2, label: "3\" x 3\" (76.2 x 76.2 mm) (Visa)" },
+  "passport": { width: 35.0, height: 45.0, label: "Passport (35 x 45 mm)" },
+  "custom": { width: 0, height: 0, label: "Custom (Mixed Layout)" }
+}
+
+const validateMixedLayoutCapacity = (
+  paperSize: string,
+  copiesConfig: Record<'1x1' | '2x2' | '3x3', number>,
+  idSpacing: number
+): { valid: boolean; requestedArea: number; maxUsableArea: number } => {
+  const paperDef = PAPER_SIZES[paperSize] || PAPER_SIZES["A4"]
+  const maxUsableArea = paperDef.width * paperDef.height
+
+  const area1x1 = 25.4 * 25.4
+  const area2x2 = 50.8 * 50.8
+  const area3x3 = 76.2 * 76.2
+
+  const spacingBuffers = 
+    copiesConfig['1x1'] * (25.4 * idSpacing * 2 + idSpacing * idSpacing) +
+    copiesConfig['2x2'] * (50.8 * idSpacing * 2 + idSpacing * idSpacing) +
+    copiesConfig['3x3'] * (76.2 * idSpacing * 2 + idSpacing * idSpacing)
+
+  const requestedArea = 
+    (copiesConfig['1x1'] * area1x1) + 
+    (copiesConfig['2x2'] * area2x2) + 
+    (copiesConfig['3x3'] * area3x3) + 
+    spacingBuffers
+
+  return {
+    valid: requestedArea <= maxUsableArea,
+    requestedArea,
+    maxUsableArea
+  }
 }
 
 interface IDSidebarProps {
@@ -37,10 +69,12 @@ interface IDSidebarProps {
   uploadedFileSize: string | null
   setUploadedFileSize: (size: string | null) => void
   onClearImage: () => void
-  idSize: '1x1' | '2x2' | 'passport'
-  setIdSize: (size: '1x1' | '2x2' | 'passport') => void
+  idSize: '1x1' | '2x2' | '3x3' | 'passport' | 'custom'
+  setIdSize: (size: '1x1' | '2x2' | '3x3' | 'passport' | 'custom') => void
   idSpacing: number
   setIdSpacing: (spacing: number) => void
+  customCopies: Record<'1x1' | '2x2' | '3x3', number>
+  setCustomCopies: React.Dispatch<React.SetStateAction<Record<'1x1' | '2x2' | '3x3', number>>>
 }
 
 export const IDSidebar: React.FC<IDSidebarProps> = ({
@@ -60,7 +94,9 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
   idSize,
   setIdSize,
   idSpacing,
-  setIdSpacing
+  setIdSpacing,
+  customCopies,
+  setCustomCopies
 }) => {
   
   // File dropzone trigger
@@ -209,7 +245,7 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
               <select
                 id="id-size"
                 value={idSize}
-                onChange={(e) => setIdSize(e.target.value as '1x1' | '2x2' | 'passport')}
+                onChange={(e) => setIdSize(e.target.value as '1x1' | '2x2' | '3x3' | 'passport' | 'custom')}
                 className="form-select"
               >
                 {Object.entries(ID_SIZES).map(([key, item]) => (
@@ -217,6 +253,83 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
                 ))}
               </select>
             </div>
+
+            {idSize === 'custom' && (
+              <div className="custom-copies-matrix" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem', borderTop: '1px solid #23273a', paddingTop: '1rem' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Custom Mixed Copies</div>
+                {(['1x1', '2x2', '3x3'] as const).map((key) => {
+                  const currentVal = customCopies[key]
+                  const isIncDisabled = !validateMixedLayoutCapacity(paperSize, { ...customCopies, [key]: currentVal + 1 }, idSpacing).valid
+
+                  return (
+                    <div key={key} className="control-field" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                      <label style={{ fontSize: '0.875rem', color: '#cbd5e1' }}>
+                        {key === '1x1' ? '1" x 1"' : key === '2x2' ? '2" x 2"' : '3" x 3"'} Copies
+                      </label>
+                      <div className="input-with-buttons" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => setCustomCopies(prev => ({ ...prev, [key]: Math.max(0, prev[key] - 1) }))}
+                          disabled={currentVal <= 0}
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            backgroundColor: '#23273a',
+                            border: '1px solid #2e344e',
+                            borderRadius: '4px',
+                            color: '#cbd5e1',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          -
+                        </button>
+                        <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.9rem', color: '#f1f5f9' }}>{currentVal}</span>
+                        <button
+                          type="button"
+                          onClick={() => setCustomCopies(prev => ({ ...prev, [key]: prev[key] + 1 }))}
+                          disabled={isIncDisabled}
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            backgroundColor: isIncDisabled ? '#151824' : '#23273a',
+                            border: '1px solid #2e344e',
+                            borderRadius: '4px',
+                            color: isIncDisabled ? '#475569' : '#cbd5e1',
+                            cursor: isIncDisabled ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+                {!validateMixedLayoutCapacity(paperSize, customCopies, idSpacing).valid && (
+                  <div className="alert-box-warning" style={{
+                    padding: '0.75rem 1rem',
+                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: '8px',
+                    color: '#fca5a5',
+                    fontSize: '0.825rem',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    marginTop: '0.5rem'
+                  }}>
+                    <span>⚠️</span>
+                    <span>Exceeded Sheet Printing Bounds: Current combination does not fit on this paper profile.</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="control-field">
               <div className="control-label-row">

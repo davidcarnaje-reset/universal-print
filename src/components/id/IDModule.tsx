@@ -37,9 +37,14 @@ export const IDModule: React.FC<IDModuleProps> = ({
   const [uploadedFileSize, setUploadedFileSize] = useState<string | null>(null)
 
   // ID Picture States
-  const [idSize, setIdSize] = useState<'1x1' | '2x2' | 'passport'>('2x2')
+  const [idSize, setIdSize] = useState<'1x1' | '2x2' | '3x3' | 'passport' | 'custom'>('2x2')
   const [idSpacing, setIdSpacing] = useState<number>(2)
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false)
+  const [customCopies, setCustomCopies] = useState<Record<'1x1' | '2x2' | '3x3', number>>({
+    '1x1': 0,
+    '2x2': 0,
+    '3x3': 0
+  })
 
   // Sizing details helper
   const paperDef = PAPER_SIZES[paperSize] || PAPER_SIZES["A4"]
@@ -72,6 +77,8 @@ export const IDModule: React.FC<IDModuleProps> = ({
         setIdSize={setIdSize}
         idSpacing={idSpacing}
         setIdSpacing={setIdSpacing}
+        customCopies={customCopies}
+        setCustomCopies={setCustomCopies}
       />
 
       <IDWorkspace
@@ -85,6 +92,7 @@ export const IDModule: React.FC<IDModuleProps> = ({
         idSpacing={idSpacing}
         isPreviewOpen={isPreviewOpen}
         setIsPreviewOpen={setIsPreviewOpen}
+        customCopies={customCopies}
       />
     </>
   )

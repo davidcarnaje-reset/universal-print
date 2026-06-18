@@ -10,16 +10,19 @@ interface IDWorkspaceProps {
   zoom: number
   setZoom: (zoom: number | ((prev: number) => number)) => void
   uploadedImage: string | null
-  idSize: '1x1' | '2x2' | 'passport'
+  idSize: '1x1' | '2x2' | '3x3' | 'passport' | 'custom'
   idSpacing: number
   isPreviewOpen: boolean
   setIsPreviewOpen: (open: boolean) => void
+  customCopies: Record<'1x1' | '2x2' | '3x3', number>
 }
 
 const ID_SIZES = {
   "1x1": { width: 25.4, height: 25.4, label: "1\" x 1\" (25.4 x 25.4 mm)" },
   "2x2": { width: 50.8, height: 50.8, label: "2\" x 2\" (50.8 x 50.8 mm)" },
-  "passport": { width: 35.0, height: 45.0, label: "Passport (35 x 45 mm)" }
+  "3x3": { width: 76.2, height: 76.2, label: "3\" x 3\" (76.2 x 76.2 mm) (Visa)" },
+  "passport": { width: 35.0, height: 45.0, label: "Passport (35 x 45 mm)" },
+  "custom": { width: 0, height: 0, label: "Custom (Mixed Layout)" }
 }
 
 export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
@@ -32,10 +35,12 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
   idSize,
   idSpacing,
   isPreviewOpen,
-  setIsPreviewOpen
+  setIsPreviewOpen,
+  customCopies
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const fabricCanvasRef = useRef<Canvas | null>(null)
+  const [previewImage, setPreviewImage] = React.useState<string | null>(null)
 
   const CANVAS_SCALE = 2.0
   const cellW = paperWidthMM * CANVAS_SCALE
@@ -45,15 +50,19 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
   const canvasHeight = cellH
 
   // Sizing definitions
-  const idDef = ID_SIZES[idSize]
+  const idDef = ID_SIZES[idSize] || ID_SIZES["2x2"]
   const idWidthMm = idDef.width
   const idHeightMm = idDef.height
   const safetyMarginMM = 5
   const spacingMm = idSpacing
 
-  const cols = Math.max(0, Math.floor((paperWidthMM - 2 * safetyMarginMM + spacingMm) / (idWidthMm + spacingMm)))
-  const rows = Math.max(0, Math.floor((paperHeightMM - 2 * safetyMarginMM + spacingMm) / (idHeightMm + spacingMm)))
-  const totalFitCount = cols * rows
+  const isCustomMode = idSize === 'custom'
+
+  const cols = isCustomMode ? 0 : Math.max(0, Math.floor((paperWidthMM - 2 * safetyMarginMM + spacingMm) / (idWidthMm + spacingMm)))
+  const rows = isCustomMode ? 0 : Math.max(0, Math.floor((paperHeightMM - 2 * safetyMarginMM + spacingMm) / (idHeightMm + spacingMm)))
+  const totalFitCount = isCustomMode 
+    ? (customCopies['1x1'] + customCopies['2x2'] + customCopies['3x3'])
+    : cols * rows
 
   // Pixel definitions for canvas elements
   const marginPx = safetyMarginMM * CANVAS_SCALE
@@ -73,7 +82,9 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
       height: canvasHeight,
       backgroundColor: '#ffffff',
       selection: false,
-      preserveObjectStacking: true
+      preserveObjectStacking: true,
+      enableRetinaScaling: true,
+      imageSmoothingEnabled: true
     })
 
     fabricCanvasRef.current = canvas
@@ -124,69 +135,114 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
       })
       canvas.add(text)
       canvas.requestRenderAll()
+      setPreviewImage(null)
       return
     }
 
-    if (cols === 0 || rows === 0) {
-      const errorText = new FabricText('Paper size too small for selected ID size.', {
-        left: canvasWidth / 2,
-        top: canvasHeight / 2,
-        originX: 'center',
-        originY: 'center',
-        fontSize: 12,
-        fill: '#ef4444',
-        fontFamily: 'sans-serif',
-        selectable: false,
-        evented: false
-      })
-      canvas.add(errorText)
-      canvas.requestRenderAll()
-      return
+    const isCustomMode = idSize === 'custom'
+
+    if (isCustomMode) {
+      const copies1x1 = customCopies['1x1'] || 0
+      const copies2x2 = customCopies['2x2'] || 0
+      const copies3x3 = customCopies['3x3'] || 0
+      const totalCopies = copies1x1 + copies2x2 + copies3x3
+
+      if (totalCopies === 0) {
+        const text = new FabricText('Custom Mode active. Set photo copies in sidebar.', {
+          left: canvas.getWidth() / 2,
+          top: canvas.getHeight() / 2,
+          originX: 'center',
+          originY: 'center',
+          fontSize: 14,
+          fill: '#94a3b8',
+          fontFamily: 'sans-serif',
+          selectable: false,
+          evented: false
+        })
+        canvas.add(text)
+        canvas.renderAll()
+        
+        const workspaceSnapshotUrl = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 })
+        setPreviewImage(workspaceSnapshotUrl)
+        return
+      }
+    } else {
+      if (cols === 0 || rows === 0) {
+        const errorText = new FabricText('Paper size too small for selected ID size.', {
+          left: canvasWidth / 2,
+          top: canvasHeight / 2,
+          originX: 'center',
+          originY: 'center',
+          fontSize: 12,
+          fill: '#ef4444',
+          fontFamily: 'sans-serif',
+          selectable: false,
+          evented: false
+        })
+        canvas.add(errorText)
+        canvas.requestRenderAll()
+        setPreviewImage(null)
+        return
+      }
     }
-
-    // Strict physical dimensions conversion
-    const totalGridWidth = (cols * idWidthMm) + ((cols - 1) * spacingMm);
-    const totalGridHeight = (rows * idHeightMm) + ((rows - 1) * spacingMm);
-
-    // Find leftover space and split it equally to get the margins
-    const centerOffsetX = (paperWidthMM - totalGridWidth) / 2;
-    const centerOffsetY = (paperHeightMM - totalGridHeight) / 2;
 
     // Clear old grid objects from Fabric canvas
-    const existingPhotos = canvas.getObjects().filter((obj: any) => obj.id === 'id-photo-item');
-    canvas.remove(...existingPhotos);
+    const existingPhotos = canvas.getObjects().filter((obj: any) => obj.id === 'id-photo-item')
+    canvas.remove(...existingPhotos)
 
-    // Render the centered grid loop using Group containment
+    // Render grid using Group containment
     FabricImage.fromURL(uploadedImage).then((oImg) => {
       const imgElement = oImg.getElement() as HTMLImageElement
-      const targetAspectRatio = idWidthMm / idHeightMm
-      const imgAspectRatio = imgElement.width / imgElement.height
-      let sx = 0
-      let sy = 0
-      let sWidth = imgElement.width
-      let sHeight = imgElement.height
+      const idObjectsArray: any[] = []
 
-      if (imgAspectRatio > targetAspectRatio) {
-        sWidth = imgElement.height * targetAspectRatio
-        sx = (imgElement.width - sWidth) / 2
-      } else if (imgAspectRatio < targetAspectRatio) {
-        sHeight = imgElement.width / targetAspectRatio
-        sy = (imgElement.height - sHeight) / 2
-      }
+      if (isCustomMode) {
+        const copies1x1 = customCopies['1x1'] || 0
+        const copies2x2 = customCopies['2x2'] || 0
+        const copies3x3 = customCopies['3x3'] || 0
 
-      const idObjectsArray: any[] = [];
+        interface MixedIDItem { width: number; height: number; type: string; }
+        const itemsToRender: MixedIDItem[] = []
 
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          // Ensure current loop item calculations strictly add the offsets:
-          const finalX = centerOffsetX + (c * (idWidthMm + spacingMm));
-          const finalY = centerOffsetY + (r * (idHeightMm + spacingMm));
+        for (let i = 0; i < copies3x3; i++) itemsToRender.push({ width: 76.2, height: 76.2, type: '3x3' })
+        for (let i = 0; i < copies2x2; i++) itemsToRender.push({ width: 50.8, height: 50.8, type: '2x2' })
+        for (let i = 0; i < copies1x1; i++) itemsToRender.push({ width: 25.4, height: 25.4, type: '1x1' })
 
-          // Convert mm to active canvas pixels using our global scale factor (CANVAS_SCALE)
-          const pxX = finalX * CANVAS_SCALE;
-          const pxY = finalY * CANVAS_SCALE;
-          const pxW = idWidthMm * CANVAS_SCALE;
-          const pxH = idHeightMm * CANVAS_SCALE;
+        let currentX = 0
+        let currentY = 0
+        let maxRowHeight = 0
+        const spacing = spacingMm * CANVAS_SCALE
+        const maxRowWidth = usableW
+
+        for (const item of itemsToRender) {
+          const itemW = item.width * CANVAS_SCALE
+          const itemH = item.height * CANVAS_SCALE
+
+          // Check if adding this item exceeds the width of the page shelf
+          if (currentX + itemW > maxRowWidth && currentX > 0) {
+            // Wrap to the next row safely
+            currentX = 0
+            currentY += maxRowHeight + spacing
+            maxRowHeight = 0 // Reset height tracker for the new shelf row
+          }
+
+          // Set the absolute local positions for the image object
+          const pxX = currentX
+          const pxY = currentY
+
+          const targetAspectRatio = item.width / item.height
+          const imgAspectRatio = imgElement.width / imgElement.height
+          let sx = 0
+          let sy = 0
+          let sWidth = imgElement.width
+          let sHeight = imgElement.height
+
+          if (imgAspectRatio > targetAspectRatio) {
+            sWidth = imgElement.height * targetAspectRatio
+            sx = (imgElement.width - sWidth) / 2
+          } else if (imgAspectRatio < targetAspectRatio) {
+            sHeight = imgElement.width / targetAspectRatio
+            sy = (imgElement.height - sHeight) / 2
+          }
 
           const idImg = new FabricImage(imgElement, {
             left: pxX,
@@ -195,14 +251,74 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
             height: sHeight,
             cropX: sx,
             cropY: sy,
-            scaleX: pxW / sWidth,
-            scaleY: pxH / sHeight,
+            scaleX: itemW / sWidth,
+            scaleY: itemH / sHeight,
             selectable: false,
             evented: false,
             stroke: '#cccccc',
-            strokeWidth: 1
+            strokeWidth: 1,
+            objectCaching: false,
+            imageSmoothing: true,
+            strokeUniform: true
           })
+
           idObjectsArray.push(idImg)
+
+          // Advance the horizontal pointer and track the tallest element on this shelf
+          currentX += itemW + spacing
+          if (itemH > maxRowHeight) maxRowHeight = itemH
+        }
+      } else {
+        const totalGridWidth = (cols * idWidthMm) + ((cols - 1) * spacingMm)
+        const totalGridHeight = (rows * idHeightMm) + ((rows - 1) * spacingMm)
+
+        const centerOffsetX = (paperWidthMM - totalGridWidth) / 2
+        const centerOffsetY = (paperHeightMM - totalGridHeight) / 2
+
+        const targetAspectRatio = idWidthMm / idHeightMm
+        const imgAspectRatio = imgElement.width / imgElement.height
+        let sx = 0
+        let sy = 0
+        let sWidth = imgElement.width
+        let sHeight = imgElement.height
+
+        if (imgAspectRatio > targetAspectRatio) {
+          sWidth = imgElement.height * targetAspectRatio
+          sx = (imgElement.width - sWidth) / 2
+        } else if (imgAspectRatio < targetAspectRatio) {
+          sHeight = imgElement.width / targetAspectRatio
+          sy = (imgElement.height - sHeight) / 2
+        }
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const finalX = centerOffsetX + (c * (idWidthMm + spacingMm))
+            const finalY = centerOffsetY + (r * (idHeightMm + spacingMm))
+
+            const pxX = finalX * CANVAS_SCALE
+            const pxY = finalY * CANVAS_SCALE
+            const pxW = idWidthMm * CANVAS_SCALE
+            const pxH = idHeightMm * CANVAS_SCALE
+
+            const idImg = new FabricImage(imgElement, {
+              left: pxX,
+              top: pxY,
+              width: sWidth,
+              height: sHeight,
+              cropX: sx,
+              cropY: sy,
+              scaleX: pxW / sWidth,
+              scaleY: pxH / sHeight,
+              selectable: false,
+              evented: false,
+              stroke: '#cccccc',
+              strokeWidth: 1,
+              objectCaching: false,
+              imageSmoothing: true,
+              strokeUniform: true
+            })
+            idObjectsArray.push(idImg)
+          }
         }
       }
 
@@ -211,20 +327,29 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
         id: 'id-photo-item',
         selectable: false,
         evented: false,
-        subTargetCheck: false
+        subTargetCheck: false,
+        objectCaching: false
       } as any);
 
-      // 1. FORCE FABRIC CORE CENTER CALCULATIONS
+      // 2. FORCE NATIVE RELATIVE OVERRIDE
+      // To fix the double translation layout shift bug, tell Fabric to reset the positions inside:
+      idObjectsArray.forEach(obj => {
+        // Force sub-objects to respect their absolute rendering pixels context
+        obj.setCoords();
+      });
+
+      // 3. SECURE CORE CANVAS CENTERING
+      // Snaps the combined bounding box strictly onto the center of the viewport paper sheet
       canvas.centerObject(finalCenteredGroup);
 
-      // 2. Clear native coordinate origin drift overrides
-      finalCenteredGroup.setCoords();
-
-      // 3. Render directly onto the screen context
       canvas.add(finalCenteredGroup);
-      canvas.requestRenderAll();
+      canvas.renderAll(); // Force synchronous render
+
+      const workspaceSnapshotUrl = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 1 });
+      setPreviewImage(workspaceSnapshotUrl);
     }).catch((err) => {
       console.error('Failed to draw centered ID pictures in Fabric Group:', err)
+      setPreviewImage(null)
     })
   }, [
     uploadedImage,
@@ -247,7 +372,8 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
     idWidthMm,
     idHeightMm,
     spacingMm,
-    fabricCanvasRef.current
+    fabricCanvasRef.current,
+    customCopies
   ])
 
   return (
@@ -336,6 +462,8 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
         orientation={orientation}
         idSize={idSize}
         idSpacing={idSpacing}
+        previewImage={previewImage}
+        customCopies={customCopies}
       />
     </main>
   )
