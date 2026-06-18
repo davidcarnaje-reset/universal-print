@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { jsPDF } from 'jspdf'
 import '../tiling/TilingPreviewModal.css' // Reuse the same premium modal CSS layout
+import { isNativeApp } from '../../utils/env'
 
 interface IDPreviewModalProps {
   isOpen: boolean
@@ -343,20 +344,32 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
 
           {/* Action Export Buttons */}
           <div className="footer-actions">
-            <button 
-              className="preview-action-btn secondary" 
-              onClick={handleSavePDF}
-              disabled={isExporting || !uploadedImage}
-            >
-              {isExporting ? 'Exporting...' : 'Save as PDF'}
-            </button>
-            <button 
-              className="preview-action-btn primary" 
-              onClick={handlePrintNow}
-              disabled={isExporting || !uploadedImage}
-            >
-              {isExporting ? 'Exporting...' : 'Print Now'}
-            </button>
+            {isNativeApp ? (
+              <>
+                <button 
+                  className="preview-action-btn secondary" 
+                  onClick={handleSavePDF}
+                  disabled={isExporting || !uploadedImage}
+                >
+                  {isExporting ? 'Exporting...' : 'Save as PDF'}
+                </button>
+                <button 
+                  className="preview-action-btn primary" 
+                  onClick={handlePrintNow}
+                  disabled={isExporting || !uploadedImage}
+                >
+                  {isExporting ? 'Exporting...' : 'Print Now'}
+                </button>
+              </>
+            ) : (
+              <button 
+                className="preview-action-btn primary" 
+                onClick={handleSavePDF}
+                disabled={isExporting || !uploadedImage}
+              >
+                {isExporting ? 'Exporting...' : 'Save as PDF'}
+              </button>
+            )}
           </div>
         </footer>
 
