@@ -3,13 +3,8 @@ import React, { useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { isNativeApp } from '../../utils/env'
 import { PAPER_SIZES } from '../../utils/paperSizes'
+import { ID_SIZES, IdSizeKey, MixedQuantities } from '../../utils/idSizes'
 
-
-const ID_SIZES = {
-  "1x1": { width: 25.4, height: 25.4, label: "1\" x 1\" (25.4 x 25.4 mm)" },
-  "2x2": { width: 50.8, height: 50.8, label: "2\" x 2\" (50.8 x 50.8 mm)" },
-  "passport": { width: 35.0, height: 45.0, label: "Passport (35 x 45 mm)" }
-}
 
 interface IDSidebarProps {
   activeTab: 'tiling' | 'id-picture'
@@ -25,10 +20,12 @@ interface IDSidebarProps {
   uploadedFileSize: string | null
   setUploadedFileSize: (size: string | null) => void
   onClearImage: () => void
-  idSize: '1x1' | '2x2' | 'passport'
-  setIdSize: (size: '1x1' | '2x2' | 'passport') => void
+  idSize: IdSizeKey
+  setIdSize: (size: IdSizeKey) => void
   idSpacing: number
   setIdSpacing: (spacing: number) => void
+  mixedQuantities: MixedQuantities
+  setMixedQuantities: (q: MixedQuantities) => void
 }
 
 export const IDSidebar: React.FC<IDSidebarProps> = ({
@@ -48,7 +45,9 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
   idSize,
   setIdSize,
   idSpacing,
-  setIdSpacing
+  setIdSpacing,
+  mixedQuantities,
+  setMixedQuantities
 }) => {
   
   // File dropzone trigger
@@ -232,7 +231,7 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
               <select
                 id="id-size"
                 value={idSize}
-                onChange={(e) => setIdSize(e.target.value as '1x1' | '2x2' | 'passport')}
+                onChange={(e) => setIdSize(e.target.value as IdSizeKey)}
                 className="form-select"
               >
                 {Object.entries(ID_SIZES).map(([key, item]) => (
@@ -265,6 +264,117 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
             </div>
           </div>
         </section>
+
+        {/* Custom Mixed Sizes Sub-Panel — only visible when custom_mix is selected */}
+        {idSize === 'custom_mix' && (
+          <section className="sidebar-section">
+            <h2 className="section-title">Custom Mix Quantities</h2>
+            <div className="control-group card">
+              <div className="control-field">
+                <div className="control-label-row">
+                  <label htmlFor="mix-1x1">1" × 1" Photos</label>
+                  <span className="control-value">{mixedQuantities.oneByOne}</span>
+                </div>
+                <div className="input-slider-wrapper">
+                  <input
+                    type="range"
+                    id="mix-1x1"
+                    min="0"
+                    max="16"
+                    step="1"
+                    value={mixedQuantities.oneByOne}
+                    onChange={(e) => setMixedQuantities({ ...mixedQuantities, oneByOne: parseInt(e.target.value) || 0 })}
+                  />
+                  <div className="slider-ticks">
+                    <span>0</span>
+                    <span>8</span>
+                    <span>16</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="control-field">
+                <div className="control-label-row">
+                  <label htmlFor="mix-2x2">2" × 2" Photos</label>
+                  <span className="control-value">{mixedQuantities.twoByTwo}</span>
+                </div>
+                <div className="input-slider-wrapper">
+                  <input
+                    type="range"
+                    id="mix-2x2"
+                    min="0"
+                    max="8"
+                    step="1"
+                    value={mixedQuantities.twoByTwo}
+                    onChange={(e) => setMixedQuantities({ ...mixedQuantities, twoByTwo: parseInt(e.target.value) || 0 })}
+                  />
+                  <div className="slider-ticks">
+                    <span>0</span>
+                    <span>4</span>
+                    <span>8</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="control-field">
+                <div className="control-label-row">
+                  <label htmlFor="mix-passport">Passport Photos</label>
+                  <span className="control-value">{mixedQuantities.passport}</span>
+                </div>
+                <div className="input-slider-wrapper">
+                  <input
+                    type="range"
+                    id="mix-passport"
+                    min="0"
+                    max="8"
+                    step="1"
+                    value={mixedQuantities.passport}
+                    onChange={(e) => setMixedQuantities({ ...mixedQuantities, passport: parseInt(e.target.value) || 0 })}
+                  />
+                  <div className="slider-ticks">
+                    <span>0</span>
+                    <span>4</span>
+                    <span>8</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                padding: '0.5rem 0.75rem',
+                background: 'rgba(99, 102, 241, 0.08)',
+                borderRadius: '6px',
+                fontSize: '0.75rem',
+                color: '#a5b4fc',
+                lineHeight: '1.4'
+              }}>
+                Total pieces: {mixedQuantities.oneByOne + mixedQuantities.twoByTwo + mixedQuantities.passport} — 
+                Auto-arranged largest-first onto the paper sheet.
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Package Info — only visible when package_3x3 is selected */}
+        {idSize === 'package_3x3' && (
+          <section className="sidebar-section">
+            <h2 className="section-title">Package Contents</h2>
+            <div className="control-group card">
+              <div style={{
+                padding: '0.5rem 0.75rem',
+                background: 'rgba(99, 102, 241, 0.08)',
+                borderRadius: '6px',
+                fontSize: '0.78rem',
+                color: '#cbd5e1',
+                lineHeight: '1.6'
+              }}>
+                <div style={{ marginBottom: '0.25rem', fontWeight: 600, color: '#a5b4fc' }}>Fixed 9-Piece Combo:</div>
+                <div>• 1× 2" × 2" (50.8 × 50.8 mm)</div>
+                <div>• 4× Passport (35 × 45 mm)</div>
+                <div>• 4× 1" × 1" (25.4 × 25.4 mm)</div>
+              </div>
+            </div>
+          </section>
+        )}
       </div>
     </aside>
   )

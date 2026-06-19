@@ -1,8 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { jsPDF } from 'jspdf'
 import '../tiling/TilingPreviewModal.css' // Reuse the same premium modal CSS layout
 import { isNativeApp } from '../../utils/env'
+import {
+  ID_SIZES,
+  IdSizeKey,
+  MixedQuantities,
+  PlacedItem,
+  calculateCustomMixLayout,
+  calculatePackage3x3Layout
+} from '../../utils/idSizes'
 
 interface IDPreviewModalProps {
   isOpen: boolean
@@ -11,14 +19,9 @@ interface IDPreviewModalProps {
   paperWidthMM: number
   paperHeightMM: number
   orientation: 'portrait' | 'landscape'
-  idSize: '1x1' | '2x2' | 'passport'
+  idSize: IdSizeKey
   idSpacing: number
-}
-
-const ID_SIZES = {
-  "1x1": { width: 25.4, height: 25.4, label: "1\" x 1\" (25.4 x 25.4 mm)" },
-  "2x2": { width: 50.8, height: 50.8, label: "2\" x 2\" (50.8 x 50.8 mm)" },
-  "passport": { width: 35.0, height: 45.0, label: "Passport (35 x 45 mm)" }
+  mixedQuantities: MixedQuantities
 }
 
 export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
@@ -29,7 +32,8 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
   paperHeightMM,
   orientation,
   idSize,
-  idSpacing
+  idSpacing,
+  mixedQuantities
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [previewZoom, setPreviewZoom] = useState<number>(0.65)
@@ -37,14 +41,30 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
 
   // Sizing definitions
+  const isStandardMode = idSize !== 'package_3x3' && idSize !== 'custom_mix'
   const idDef = ID_SIZES[idSize]
-  const idWidthMm = idDef.width
-  const idHeightMm = idDef.height
+  const idWidthMm = isStandardMode ? idDef.width : 0
+  const idHeightMm = isStandardMode ? idDef.height : 0
   const safetyMarginMM = 5
   const spacingMm = idSpacing
 
-  const cols = Math.max(0, Math.floor((paperWidthMM - 2 * safetyMarginMM + spacingMm) / (idWidthMm + spacingMm)))
-  const rows = Math.max(0, Math.floor((paperHeightMM - 2 * safetyMarginMM + spacingMm) / (idHeightMm + spacingMm)))
+  const cols = isStandardMode
+    ? Math.max(0, Math.floor((paperWidthMM - 2 * safetyMarginMM + spacingMm) / (idWidthMm + spacingMm)))
+    : 0
+  const rows = isStandardMode
+    ? Math.max(0, Math.floor((paperHeightMM - 2 * safetyMarginMM + spacingMm) / (idHeightMm + spacingMm)))
+    : 0
+
+  // Multi-size layout placement
+  const placedItems: PlacedItem[] = useMemo(() => {
+    if (idSize === 'package_3x3') {
+      return calculatePackage3x3Layout(paperWidthMM, paperHeightMM, safetyMarginMM, spacingMm)
+    }
+    if (idSize === 'custom_mix') {
+      return calculateCustomMixLayout(paperWidthMM, paperHeightMM, safetyMarginMM, mixedQuantities, spacingMm)
+    }
+    return []
+  }, [idSize, paperWidthMM, paperHeightMM, safetyMarginMM, spacingMm, mixedQuantities])
 
   // Canvas drawing scale (constant for crisp rendering)
   const P = 2.0
@@ -61,6 +81,22 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
     img.onerror = (err) => console.error('Failed to load image in IDPreviewModal:', err)
     img.src = uploadedImage
   }, [uploadedImage])
+
+  // Helper: crop source region to match target aspect ratio
+  const getCropRegion = (imgW: number, imgH: number, targetW: number, targetH: number) => {
+    const targetAR = targetW / targetH
+    const imgAR = imgW / imgH
+    let sx = 0, sy = 0, sWidth = imgW, sHeight = imgH
+
+    if (imgAR > targetAR) {
+      sWidth = imgH * targetAR
+      sx = (imgW - sWidth) / 2
+    } else if (imgAR < targetAR) {
+      sHeight = imgW / targetAR
+      sy = (imgH - sHeight) / 2
+    }
+    return { sx, sy, sWidth, sHeight }
+  }
 
   // Canvas drawing effect
   useEffect(() => {
@@ -85,42 +121,57 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
     ctx.strokeRect(marginPx, marginPx, usableW, usableH)
     ctx.setLineDash([]) // Reset
 
-    if (imageElement && cols > 0 && rows > 0) {
-      // Strict physical dimensions conversion
-      const totalGridWidth = (cols * idWidthMm) + ((cols - 1) * spacingMm);
-      const totalGridHeight = (rows * idHeightMm) + ((rows - 1) * spacingMm);
+    if (!imageElement) {
+      ctx.fillStyle = '#94a3b8'
+      ctx.font = `${8 * P}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('No image loaded', (paperWidthMM * P) / 2, (paperHeightMM * P) / 2)
+    } else if (isStandardMode) {
+      // --- STANDARD SINGLE-SIZE RENDERING ---
+      if (cols > 0 && rows > 0) {
+        const totalGridWidth = (cols * idWidthMm) + ((cols - 1) * spacingMm);
+        const totalGridHeight = (rows * idHeightMm) + ((rows - 1) * spacingMm);
+        const centerOffsetX = (paperWidthMM - totalGridWidth) / 2;
+        const centerOffsetY = (paperHeightMM - totalGridHeight) / 2;
 
-      // Find leftover space and split it equally to get the margins
-      const centerOffsetX = (paperWidthMM - totalGridWidth) / 2;
-      const centerOffsetY = (paperHeightMM - totalGridHeight) / 2;
+        const { sx, sy, sWidth, sHeight } = getCropRegion(imageElement.width, imageElement.height, idWidthMm, idHeightMm)
 
-      const targetAspectRatio = idWidthMm / idHeightMm
-      const imgAspectRatio = imageElement.width / imageElement.height
-      let sx = 0
-      let sy = 0
-      let sWidth = imageElement.width
-      let sHeight = imageElement.height
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const finalX = centerOffsetX + (c * (idWidthMm + spacingMm));
+            const finalY = centerOffsetY + (r * (idHeightMm + spacingMm));
 
-      if (imgAspectRatio > targetAspectRatio) {
-        sWidth = imageElement.height * targetAspectRatio
-        sx = (imageElement.width - sWidth) / 2
-      } else if (imgAspectRatio < targetAspectRatio) {
-        sHeight = imageElement.width / targetAspectRatio
-        sy = (imageElement.height - sHeight) / 2
+            const pxX = finalX * P;
+            const pxY = finalY * P;
+            const pxW = idWidthMm * P;
+            const pxH = idHeightMm * P;
+
+            ctx.drawImage(imageElement, sx, sy, sWidth, sHeight, pxX, pxY, pxW, pxH)
+
+            // Thin cutting border
+            ctx.strokeStyle = '#cccccc'
+            ctx.lineWidth = 0.5 * P
+            ctx.strokeRect(pxX, pxY, pxW, pxH)
+          }
+        }
+      } else {
+        ctx.fillStyle = '#ef4444'
+        ctx.font = `${6 * P}px sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText('Paper size too small', (paperWidthMM * P) / 2, (paperHeightMM * P) / 2)
       }
+    } else {
+      // --- MULTI-SIZE RENDERING (package_3x3 or custom_mix) ---
+      if (placedItems.length > 0) {
+        for (const item of placedItems) {
+          const { sx, sy, sWidth, sHeight } = getCropRegion(imageElement.width, imageElement.height, item.w, item.h)
 
-      // Draw fitted ID pictures
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          // Ensure current loop item calculations strictly add the offsets:
-          const finalX = centerOffsetX + (c * (idWidthMm + spacingMm));
-          const finalY = centerOffsetY + (r * (idHeightMm + spacingMm));
-
-          // Convert mm to active canvas pixels using our scale factor
-          const pxX = finalX * P;
-          const pxY = finalY * P;
-          const pxW = idWidthMm * P;
-          const pxH = idHeightMm * P;
+          const pxX = item.x * P
+          const pxY = item.y * P
+          const pxW = item.w * P
+          const pxH = item.h * P
 
           ctx.drawImage(imageElement, sx, sy, sWidth, sHeight, pxX, pxY, pxW, pxH)
 
@@ -128,20 +179,23 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
           ctx.strokeStyle = '#cccccc'
           ctx.lineWidth = 0.5 * P
           ctx.strokeRect(pxX, pxY, pxW, pxH)
+
+          // Size label inside each item
+          ctx.save()
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
+          ctx.font = `bold ${Math.max(5, Math.min(8, pxW * 0.06)) * P}px sans-serif`
+          ctx.textAlign = 'right'
+          ctx.textBaseline = 'bottom'
+          ctx.fillText(item.sizeLabel, pxX + pxW - 2 * P, pxY + pxH - 2 * P)
+          ctx.restore()
         }
+      } else {
+        ctx.fillStyle = '#ef4444'
+        ctx.font = `${6 * P}px sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText('No items fit on this paper', (paperWidthMM * P) / 2, (paperHeightMM * P) / 2)
       }
-    } else if (!imageElement) {
-      ctx.fillStyle = '#94a3b8'
-      ctx.font = `${8 * P}px sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('No image loaded', (paperWidthMM * P) / 2, (paperHeightMM * P) / 2)
-    } else {
-      ctx.fillStyle = '#ef4444'
-      ctx.font = `${6 * P}px sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('Paper size too small', (paperWidthMM * P) / 2, (paperHeightMM * P) / 2)
     }
   }, [
     paperWidthMM,
@@ -154,6 +208,8 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
     idWidthMm,
     idHeightMm,
     spacingMm,
+    placedItems,
+    isStandardMode,
     P
   ])
 
@@ -190,50 +246,51 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, pdfWidthPx, pdfHeightPx)
 
-    if (cols > 0 && rows > 0) {
-      // Strict physical dimensions conversion
-      const totalGridWidth = (cols * idWidthMm) + ((cols - 1) * spacingMm);
-      const totalGridHeight = (rows * idHeightMm) + ((rows - 1) * spacingMm);
+    if (isStandardMode) {
+      // --- STANDARD MODE PDF ---
+      if (cols > 0 && rows > 0) {
+        const totalGridWidth = (cols * idWidthMm) + ((cols - 1) * spacingMm);
+        const totalGridHeight = (rows * idHeightMm) + ((rows - 1) * spacingMm);
+        const centerOffsetX = (paperWidthMM - totalGridWidth) / 2;
+        const centerOffsetY = (paperHeightMM - totalGridHeight) / 2;
 
-      // Find leftover space and split it equally to get the margins
-      const centerOffsetX = (paperWidthMM - totalGridWidth) / 2;
-      const centerOffsetY = (paperHeightMM - totalGridHeight) / 2;
+        const { sx, sy, sWidth, sHeight } = getCropRegion(img.width, img.height, idWidthMm, idHeightMm)
 
-      const targetAspectRatio = idWidthMm / idHeightMm
-      const imgAspectRatio = img.width / img.height
-      let sx = 0
-      let sy = 0
-      let sWidth = img.width
-      let sHeight = img.height
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const finalX = centerOffsetX + (c * (idWidthMm + spacingMm));
+            const finalY = centerOffsetY + (r * (idHeightMm + spacingMm));
 
-      if (imgAspectRatio > targetAspectRatio) {
-        sWidth = img.height * targetAspectRatio
-        sx = (img.width - sWidth) / 2
-      } else if (imgAspectRatio < targetAspectRatio) {
-        sHeight = img.width / targetAspectRatio
-        sy = (img.height - sHeight) / 2
-      }
+            const pxX = finalX * ratio300;
+            const pxY = finalY * ratio300;
+            const pxW = idWidthMm * ratio300;
+            const pxH = idHeightMm * ratio300;
 
-      // Draw repeating ID photos
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          // Ensure current loop item calculations strictly add the offsets:
-          const finalX = centerOffsetX + (c * (idWidthMm + spacingMm));
-          const finalY = centerOffsetY + (r * (idHeightMm + spacingMm));
+            ctx.drawImage(img, sx, sy, sWidth, sHeight, pxX, pxY, pxW, pxH)
 
-          // Convert mm to active canvas pixels using our global scale factor (ratio300)
-          const pxX = finalX * ratio300;
-          const pxY = finalY * ratio300;
-          const pxW = idWidthMm * ratio300;
-          const pxH = idHeightMm * ratio300;
-
-          ctx.drawImage(img, sx, sy, sWidth, sHeight, pxX, pxY, pxW, pxH)
-
-          // Light gray border
-          ctx.strokeStyle = '#cccccc'
-          ctx.lineWidth = 1
-          ctx.strokeRect(pxX, pxY, pxW, pxH)
+            // Light gray border
+            ctx.strokeStyle = '#cccccc'
+            ctx.lineWidth = 1
+            ctx.strokeRect(pxX, pxY, pxW, pxH)
+          }
         }
+      }
+    } else {
+      // --- MULTI-SIZE MODE PDF ---
+      for (const item of placedItems) {
+        const { sx, sy, sWidth, sHeight } = getCropRegion(img.width, img.height, item.w, item.h)
+
+        const pxX = item.x * ratio300
+        const pxY = item.y * ratio300
+        const pxW = item.w * ratio300
+        const pxH = item.h * ratio300
+
+        ctx.drawImage(img, sx, sy, sWidth, sHeight, pxX, pxY, pxW, pxH)
+
+        // Light gray border
+        ctx.strokeStyle = '#cccccc'
+        ctx.lineWidth = 1
+        ctx.strokeRect(pxX, pxY, pxW, pxH)
       }
     }
 
@@ -275,6 +332,13 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
       setIsExporting(false)
     }
   }
+
+  // Display label
+  const displayLabel = isStandardMode
+    ? idDef.label
+    : idSize === 'package_3x3'
+      ? '3×3 Combo Package'
+      : 'Custom Mixed Sizes'
 
   return (
     <div className="preview-modal-overlay">
@@ -326,7 +390,7 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
                   type="range"
                   id="modal-zoom"
                   min="0.3"
-                  max="1.2"
+                  max="1.5"
                   step="0.05"
                   value={previewZoom}
                   onChange={(e) => setPreviewZoom(parseFloat(e.target.value))}
@@ -337,7 +401,7 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
 
             <div className="footer-control-item">
               <span className="value-badge" style={{ padding: '4px 10px', height: 'auto' }}>
-                Layout Format: {idDef.label}
+                Layout: {displayLabel}
               </span>
             </div>
           </div>

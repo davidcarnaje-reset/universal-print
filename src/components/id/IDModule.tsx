@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { IDSidebar } from './IDSidebar'
 import { IDWorkspace } from './IDWorkspace'
 import { PAPER_SIZES } from '../../utils/paperSizes'
+import { IdSizeKey, DEFAULT_MIXED_QUANTITIES, MixedQuantities } from '../../utils/idSizes'
 
 interface IDModuleProps {
   activeTab: 'tiling' | 'id-picture'
@@ -23,9 +24,10 @@ export const IDModule: React.FC<IDModuleProps> = ({
   const [uploadedFileSize, setUploadedFileSize] = useState<string | null>(null)
 
   // ID Picture States
-  const [idSize, setIdSize] = useState<'1x1' | '2x2' | 'passport'>('2x2')
+  const [idSize, setIdSize] = useState<IdSizeKey>('2x2')
   const [idSpacing, setIdSpacing] = useState<number>(2)
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false)
+  const [mixedQuantities, setMixedQuantities] = useState<MixedQuantities>(DEFAULT_MIXED_QUANTITIES)
 
   // Sizing details helper
   const paperDef = PAPER_SIZES.find(p => p.id === paperSize) || PAPER_SIZES[0]
@@ -58,6 +60,8 @@ export const IDModule: React.FC<IDModuleProps> = ({
         setIdSize={setIdSize}
         idSpacing={idSpacing}
         setIdSpacing={setIdSpacing}
+        mixedQuantities={mixedQuantities}
+        setMixedQuantities={setMixedQuantities}
       />
 
       <IDWorkspace
@@ -71,6 +75,7 @@ export const IDModule: React.FC<IDModuleProps> = ({
         idSpacing={idSpacing}
         isPreviewOpen={isPreviewOpen}
         setIsPreviewOpen={setIsPreviewOpen}
+        mixedQuantities={mixedQuantities}
       />
     </>
   )
