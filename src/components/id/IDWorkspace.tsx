@@ -391,14 +391,14 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
               </div>
             </div>
           )}
-          
+
           {(!isNativeApp || uploadedImage) && (
             <div className="workspace-actions">
               {!isNativeApp && (
-                <a 
-                  href="https://github.com/davidjosh/printflow/releases" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
+                <a
+                  href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/1.3.0"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="action-btn btn-pdf"
                   style={{ textDecoration: 'none', gap: '0.35rem' }}
                 >
@@ -406,8 +406,8 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
                 </a>
               )}
               {uploadedImage && (
-                <button 
-                  onClick={() => setIsPreviewOpen(true)} 
+                <button
+                  onClick={() => setIsPreviewOpen(true)}
                   className="action-btn btn-print"
                 >
                   Preview Sheet
@@ -424,29 +424,29 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
             <canvas ref={canvasRef} />
           </div>
         </div>
-        
+
         {/* Zoom controls floating */}
         <div className="zoom-controls-floating">
-          <button 
-            onClick={() => setZoom(z => Math.max(0.25, typeof z === 'function' ? (z as any)(zoom) : z - 0.1))} 
-            className="zoom-btn" 
+          <button
+            onClick={() => setZoom(z => Math.max(0.25, typeof z === 'function' ? (z as any)(zoom) : z - 0.1))}
+            className="zoom-btn"
             title="Zoom Out"
             type="button"
           >
             -
           </button>
           <span className="zoom-label">{Math.round(zoom * 100)}%</span>
-          <button 
-            onClick={() => setZoom(z => Math.min(2.0, typeof z === 'function' ? (z as any)(zoom) : z + 0.1))} 
-            className="zoom-btn" 
+          <button
+            onClick={() => setZoom(z => Math.min(2.0, typeof z === 'function' ? (z as any)(zoom) : z + 0.1))}
+            className="zoom-btn"
             title="Zoom In"
             type="button"
           >
             +
           </button>
-          <button 
-            onClick={() => setZoom(1.0)} 
-            className="zoom-btn-reset" 
+          <button
+            onClick={() => setZoom(1.0)}
+            className="zoom-btn-reset"
             title="Reset Zoom"
             type="button"
           >
