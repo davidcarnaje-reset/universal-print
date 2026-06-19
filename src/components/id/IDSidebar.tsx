@@ -49,13 +49,13 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
   mixedQuantities,
   setMixedQuantities
 }) => {
-  
+
   // File dropzone trigger
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles && acceptedFiles.length > 0) {
       const file = acceptedFiles[0]
       setUploadedFileName(file.name)
-      
+
       const sizeInMB = (file.size / (1024 * 1024)).toFixed(2)
       setUploadedFileSize(`${sizeInMB} MB`)
 
@@ -89,13 +89,13 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
 
       {/* Tab Switcher */}
       <div className="tab-switcher">
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'tiling' ? 'active' : ''}`}
           onClick={() => setActiveTab('tiling')}
         >
           Tiling Mode
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'id-picture' ? 'active' : ''}`}
           onClick={() => setActiveTab('id-picture')}
         >
@@ -105,9 +105,9 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
 
       <div className="sidebar-scrollable">
         {!isNativeApp && (
-          <a 
-            href="https://github.com/davidjosh/printflow/releases" 
-            target="_blank" 
+          <a
+            href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/1.3.0"
+            target="_blank"
             rel="noopener noreferrer"
             className="download-desktop-card"
             style={{
@@ -175,8 +175,8 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
         {/* Source Images Area */}
         <section className="sidebar-section">
           <h2 className="section-title">Source Images</h2>
-          <div 
-            {...getRootProps()} 
+          <div
+            {...getRootProps()}
             className={`dropzone ${isDragActive ? 'active' : ''} ${uploadedImage ? 'has-image' : ''}`}
           >
             <input {...getInputProps()} />
@@ -347,7 +347,7 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
                 color: '#a5b4fc',
                 lineHeight: '1.4'
               }}>
-                Total pieces: {mixedQuantities.oneByOne + mixedQuantities.twoByTwo + mixedQuantities.passport} — 
+                Total pieces: {mixedQuantities.oneByOne + mixedQuantities.twoByTwo + mixedQuantities.passport} —
                 Auto-arranged largest-first onto the paper sheet.
               </div>
             </div>

@@ -48,13 +48,13 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
   tilingMode,
   setTilingMode
 }) => {
-  
+
   // File dropzone trigger
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles && acceptedFiles.length > 0) {
       const file = acceptedFiles[0]
       setUploadedFileName(file.name)
-      
+
       const sizeInMB = (file.size / (1024 * 1024)).toFixed(2)
       setUploadedFileSize(`${sizeInMB} MB`)
 
@@ -88,13 +88,13 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
 
       {/* Tab Switcher */}
       <div className="tab-switcher">
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'tiling' ? 'active' : ''}`}
           onClick={() => setActiveTab('tiling')}
         >
           Tiling Mode
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'id-picture' ? 'active' : ''}`}
           onClick={() => setActiveTab('id-picture')}
         >
@@ -104,9 +104,9 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
 
       <div className="sidebar-scrollable">
         {!isNativeApp && (
-          <a 
-            href="https://github.com/davidjosh/printflow/releases" 
-            target="_blank" 
+          <a
+            href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/1.3.0"
+            target="_blank"
             rel="noopener noreferrer"
             className="download-desktop-card"
             style={{
@@ -174,8 +174,8 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
         {/* Source Images Area */}
         <section className="sidebar-section">
           <h2 className="section-title">Source Images</h2>
-          <div 
-            {...getRootProps()} 
+          <div
+            {...getRootProps()}
             className={`dropzone ${isDragActive ? 'active' : ''} ${uploadedImage ? 'has-image' : ''}`}
           >
             <input {...getInputProps()} />
@@ -244,8 +244,8 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
                 <span className="control-value">{tilingRows}</span>
               </div>
               <div className="input-with-buttons">
-                <button 
-                  disabled={tilingRows <= 1} 
+                <button
+                  disabled={tilingRows <= 1}
                   onClick={() => setTilingRows(r => Math.max(1, typeof r === 'function' ? (r as any)(tilingRows) : r - 1))}
                   type="button"
                 >
@@ -259,8 +259,8 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
                   value={tilingRows}
                   onChange={(e) => setTilingRows(parseInt(e.target.value) || 1)}
                 />
-                <button 
-                  disabled={tilingRows >= 10} 
+                <button
+                  disabled={tilingRows >= 10}
                   onClick={() => setTilingRows(r => Math.min(10, typeof r === 'function' ? (r as any)(tilingRows) : r + 1))}
                   type="button"
                 >
@@ -275,8 +275,8 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
                 <span className="control-value">{tilingCols}</span>
               </div>
               <div className="input-with-buttons">
-                <button 
-                  disabled={tilingCols <= 1} 
+                <button
+                  disabled={tilingCols <= 1}
                   onClick={() => setTilingCols(c => Math.max(1, typeof c === 'function' ? (c as any)(tilingCols) : c - 1))}
                   type="button"
                 >
@@ -290,8 +290,8 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
                   value={tilingCols}
                   onChange={(e) => setTilingCols(parseInt(e.target.value) || 1)}
                 />
-                <button 
-                  disabled={tilingCols >= 10} 
+                <button
+                  disabled={tilingCols >= 10}
                   onClick={() => setTilingCols(c => Math.min(10, typeof c === 'function' ? (c as any)(tilingCols) : c + 1))}
                   type="button"
                 >
