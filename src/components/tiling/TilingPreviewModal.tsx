@@ -761,7 +761,7 @@ const handleSavePDF = async () => {
                   type="range"
                   id="modal-zoom"
                   min="0.15"
-                  max="1.2"
+                  max="1.5"
                   step="0.05"
                   value={previewZoom}
                   onChange={(e) => setPreviewZoom(parseFloat(e.target.value))}

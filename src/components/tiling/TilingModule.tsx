@@ -15,7 +15,7 @@ export const TilingModule: React.FC<TilingModuleProps> = ({
   // Sizing & Sizing States
   const [paperSize, setPaperSize] = useState<string>('letter')
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
-  const [zoom, setZoom] = useState<number>(1.0)
+  const [zoom, setZoom] = useState<number>(0.7)
 
   // Upload States
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
