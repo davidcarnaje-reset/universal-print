@@ -1,8 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useMemo } from 'react'
 import { Canvas, FabricImage, Rect, FabricText, Group } from 'fabric'
 import { IDPreviewModal } from './IDPreviewModal'
 import { isNativeApp } from '../../utils/env'
+import {
+  ID_SIZES,
+  IdSizeKey,
+  MixedQuantities,
+  PlacedItem,
+  calculateCustomMixLayout,
+  calculatePackage3x3Layout
+} from '../../utils/idSizes'
 
 interface IDWorkspaceProps {
   paperWidthMM: number
@@ -11,16 +19,11 @@ interface IDWorkspaceProps {
   zoom: number
   setZoom: (zoom: number | ((prev: number) => number)) => void
   uploadedImage: string | null
-  idSize: '1x1' | '2x2' | 'passport'
+  idSize: IdSizeKey
   idSpacing: number
   isPreviewOpen: boolean
   setIsPreviewOpen: (open: boolean) => void
-}
-
-const ID_SIZES = {
-  "1x1": { width: 25.4, height: 25.4, label: "1\" x 1\" (25.4 x 25.4 mm)" },
-  "2x2": { width: 50.8, height: 50.8, label: "2\" x 2\" (50.8 x 50.8 mm)" },
-  "passport": { width: 35.0, height: 45.0, label: "Passport (35 x 45 mm)" }
+  mixedQuantities: MixedQuantities
 }
 
 export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
@@ -33,7 +36,8 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
   idSize,
   idSpacing,
   isPreviewOpen,
-  setIsPreviewOpen
+  setIsPreviewOpen,
+  mixedQuantities
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const fabricCanvasRef = useRef<Canvas | null>(null)
@@ -45,16 +49,35 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
   const canvasWidth = cellW
   const canvasHeight = cellH
 
-  // Sizing definitions
-  const idDef = ID_SIZES[idSize]
-  const idWidthMm = idDef.width
-  const idHeightMm = idDef.height
   const safetyMarginMM = 5
   const spacingMm = idSpacing
 
-  const cols = Math.max(0, Math.floor((paperWidthMM - 2 * safetyMarginMM + spacingMm) / (idWidthMm + spacingMm)))
-  const rows = Math.max(0, Math.floor((paperHeightMM - 2 * safetyMarginMM + spacingMm) / (idHeightMm + spacingMm)))
-  const totalFitCount = cols * rows
+  // Determine if this is a standard single-size mode or a multi-size mode
+  const isStandardMode = idSize !== 'package_3x3' && idSize !== 'custom_mix'
+
+  // Standard mode sizing
+  const idDef = ID_SIZES[idSize]
+  const idWidthMm = isStandardMode ? idDef.width : 0
+  const idHeightMm = isStandardMode ? idDef.height : 0
+
+  const cols = isStandardMode
+    ? Math.max(0, Math.floor((paperWidthMM - 2 * safetyMarginMM + spacingMm) / (idWidthMm + spacingMm)))
+    : 0
+  const rows = isStandardMode
+    ? Math.max(0, Math.floor((paperHeightMM - 2 * safetyMarginMM + spacingMm) / (idHeightMm + spacingMm)))
+    : 0
+  const totalFitCount = isStandardMode ? cols * rows : 0
+
+  // Multi-size layout placement
+  const placedItems: PlacedItem[] = useMemo(() => {
+    if (idSize === 'package_3x3') {
+      return calculatePackage3x3Layout(paperWidthMM, paperHeightMM, safetyMarginMM, spacingMm)
+    }
+    if (idSize === 'custom_mix') {
+      return calculateCustomMixLayout(paperWidthMM, paperHeightMM, safetyMarginMM, mixedQuantities, spacingMm)
+    }
+    return []
+  }, [idSize, paperWidthMM, paperHeightMM, safetyMarginMM, spacingMm, mixedQuantities])
 
   // Pixel definitions for canvas elements
   const marginPx = safetyMarginMM * CANVAS_SCALE
@@ -128,66 +151,154 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
       return
     }
 
-    if (cols === 0 || rows === 0) {
-      const errorText = new FabricText('Paper size too small for selected ID size.', {
-        left: canvasWidth / 2,
-        top: canvasHeight / 2,
-        originX: 'center',
-        originY: 'center',
-        fontSize: 12,
-        fill: '#ef4444',
-        fontFamily: 'sans-serif',
-        selectable: false,
-        evented: false
-      })
-      canvas.add(errorText)
-      canvas.requestRenderAll()
-      return
-    }
-
-    // Strict physical dimensions conversion
-    const totalGridWidth = (cols * idWidthMm) + ((cols - 1) * spacingMm);
-    const totalGridHeight = (rows * idHeightMm) + ((rows - 1) * spacingMm);
-
-    // Find leftover space and split it equally to get the margins
-    const centerOffsetX = (paperWidthMM - totalGridWidth) / 2;
-    const centerOffsetY = (paperHeightMM - totalGridHeight) / 2;
-
-    // Clear old grid objects from Fabric canvas
-    const existingPhotos = canvas.getObjects().filter((obj: any) => obj.id === 'id-photo-item');
-    canvas.remove(...existingPhotos);
-
-    // Render the centered grid loop using Group containment
-    FabricImage.fromURL(uploadedImage).then((oImg) => {
-      const imgElement = oImg.getElement() as HTMLImageElement
-      const targetAspectRatio = idWidthMm / idHeightMm
-      const imgAspectRatio = imgElement.width / imgElement.height
-      let sx = 0
-      let sy = 0
-      let sWidth = imgElement.width
-      let sHeight = imgElement.height
-
-      if (imgAspectRatio > targetAspectRatio) {
-        sWidth = imgElement.height * targetAspectRatio
-        sx = (imgElement.width - sWidth) / 2
-      } else if (imgAspectRatio < targetAspectRatio) {
-        sHeight = imgElement.width / targetAspectRatio
-        sy = (imgElement.height - sHeight) / 2
+    if (isStandardMode) {
+      // --- STANDARD SINGLE-SIZE MODE ---
+      if (cols === 0 || rows === 0) {
+        const errorText = new FabricText('Paper size too small for selected ID size.', {
+          left: canvasWidth / 2,
+          top: canvasHeight / 2,
+          originX: 'center',
+          originY: 'center',
+          fontSize: 12,
+          fill: '#ef4444',
+          fontFamily: 'sans-serif',
+          selectable: false,
+          evented: false
+        })
+        canvas.add(errorText)
+        canvas.requestRenderAll()
+        return
       }
 
-      const idObjectsArray: any[] = [];
+      // Strict physical dimensions conversion
+      const totalGridWidth = (cols * idWidthMm) + ((cols - 1) * spacingMm);
+      const totalGridHeight = (rows * idHeightMm) + ((rows - 1) * spacingMm);
 
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          // Ensure current loop item calculations strictly add the offsets:
-          const finalX = centerOffsetX + (c * (idWidthMm + spacingMm));
-          const finalY = centerOffsetY + (r * (idHeightMm + spacingMm));
+      // Find leftover space and split it equally to get the margins
+      const centerOffsetX = (paperWidthMM - totalGridWidth) / 2;
+      const centerOffsetY = (paperHeightMM - totalGridHeight) / 2;
 
-          // Convert mm to active canvas pixels using our global scale factor (CANVAS_SCALE)
-          const pxX = finalX * CANVAS_SCALE;
-          const pxY = finalY * CANVAS_SCALE;
-          const pxW = idWidthMm * CANVAS_SCALE;
-          const pxH = idHeightMm * CANVAS_SCALE;
+      // Clear old grid objects from Fabric canvas
+      const existingPhotos = canvas.getObjects().filter((obj: any) => obj.id === 'id-photo-item');
+      canvas.remove(...existingPhotos);
+
+      // Render the centered grid loop using Group containment
+      FabricImage.fromURL(uploadedImage).then((oImg) => {
+        const imgElement = oImg.getElement() as HTMLImageElement
+        const targetAspectRatio = idWidthMm / idHeightMm
+        const imgAspectRatio = imgElement.width / imgElement.height
+        let sx = 0
+        let sy = 0
+        let sWidth = imgElement.width
+        let sHeight = imgElement.height
+
+        if (imgAspectRatio > targetAspectRatio) {
+          sWidth = imgElement.height * targetAspectRatio
+          sx = (imgElement.width - sWidth) / 2
+        } else if (imgAspectRatio < targetAspectRatio) {
+          sHeight = imgElement.width / targetAspectRatio
+          sy = (imgElement.height - sHeight) / 2
+        }
+
+        const idObjectsArray: any[] = [];
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            // Ensure current loop item calculations strictly add the offsets:
+            const finalX = centerOffsetX + (c * (idWidthMm + spacingMm));
+            const finalY = centerOffsetY + (r * (idHeightMm + spacingMm));
+
+            // Convert mm to active canvas pixels using our global scale factor (CANVAS_SCALE)
+            const pxX = finalX * CANVAS_SCALE;
+            const pxY = finalY * CANVAS_SCALE;
+            const pxW = idWidthMm * CANVAS_SCALE;
+            const pxH = idHeightMm * CANVAS_SCALE;
+
+            const idImg = new FabricImage(imgElement, {
+              left: pxX,
+              top: pxY,
+              width: sWidth,
+              height: sHeight,
+              cropX: sx,
+              cropY: sy,
+              scaleX: pxW / sWidth,
+              scaleY: pxH / sHeight,
+              selectable: false,
+              evented: false,
+              stroke: '#cccccc',
+              strokeWidth: 1
+            })
+            idObjectsArray.push(idImg)
+          }
+        }
+
+        // Wrap all individual items into a single non-interactable strict structural set
+        const finalCenteredGroup = new Group(idObjectsArray, {
+          id: 'id-photo-item',
+          selectable: false,
+          evented: false,
+          subTargetCheck: false
+        } as any);
+
+        // 1. FORCE FABRIC CORE CENTER CALCULATIONS
+        canvas.centerObject(finalCenteredGroup);
+
+        // 2. Clear native coordinate origin drift overrides
+        finalCenteredGroup.setCoords();
+
+        // 3. Render directly onto the screen context
+        canvas.add(finalCenteredGroup);
+        canvas.requestRenderAll();
+      }).catch((err) => {
+        console.error('Failed to draw centered ID pictures in Fabric Group:', err)
+      })
+    } else {
+      // --- MULTI-SIZE MODE (package_3x3 or custom_mix) ---
+      if (placedItems.length === 0) {
+        const errorText = new FabricText('No items fit on the current paper size.', {
+          left: canvasWidth / 2,
+          top: canvasHeight / 2,
+          originX: 'center',
+          originY: 'center',
+          fontSize: 12,
+          fill: '#ef4444',
+          fontFamily: 'sans-serif',
+          selectable: false,
+          evented: false
+        })
+        canvas.add(errorText)
+        canvas.requestRenderAll()
+        return
+      }
+
+      // Clear old grid objects
+      const existingPhotos = canvas.getObjects().filter((obj: any) => obj.id === 'id-photo-item');
+      canvas.remove(...existingPhotos);
+
+      FabricImage.fromURL(uploadedImage).then((oImg) => {
+        const imgElement = oImg.getElement() as HTMLImageElement
+        const idObjectsArray: any[] = [];
+
+        for (const item of placedItems) {
+          const targetAR = item.w / item.h
+          const imgAR = imgElement.width / imgElement.height
+          let sx = 0
+          let sy = 0
+          let sWidth = imgElement.width
+          let sHeight = imgElement.height
+
+          if (imgAR > targetAR) {
+            sWidth = imgElement.height * targetAR
+            sx = (imgElement.width - sWidth) / 2
+          } else if (imgAR < targetAR) {
+            sHeight = imgElement.width / targetAR
+            sy = (imgElement.height - sHeight) / 2
+          }
+
+          const pxX = item.x * CANVAS_SCALE
+          const pxY = item.y * CANVAS_SCALE
+          const pxW = item.w * CANVAS_SCALE
+          const pxH = item.h * CANVAS_SCALE
 
           const idImg = new FabricImage(imgElement, {
             left: pxX,
@@ -205,28 +316,20 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
           })
           idObjectsArray.push(idImg)
         }
-      }
 
-      // Wrap all individual items into a single non-interactable strict structural set
-      const finalCenteredGroup = new Group(idObjectsArray, {
-        id: 'id-photo-item',
-        selectable: false,
-        evented: false,
-        subTargetCheck: false
-      } as any);
+        const mixedGroup = new Group(idObjectsArray, {
+          id: 'id-photo-item',
+          selectable: false,
+          evented: false,
+          subTargetCheck: false
+        } as any);
 
-      // 1. FORCE FABRIC CORE CENTER CALCULATIONS
-      canvas.centerObject(finalCenteredGroup);
-
-      // 2. Clear native coordinate origin drift overrides
-      finalCenteredGroup.setCoords();
-
-      // 3. Render directly onto the screen context
-      canvas.add(finalCenteredGroup);
-      canvas.requestRenderAll();
-    }).catch((err) => {
-      console.error('Failed to draw centered ID pictures in Fabric Group:', err)
-    })
+        canvas.add(mixedGroup);
+        canvas.requestRenderAll();
+      }).catch((err) => {
+        console.error('Failed to draw mixed ID pictures:', err)
+      })
+    }
   }, [
     uploadedImage,
     canvasWidth,
@@ -248,8 +351,19 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
     idWidthMm,
     idHeightMm,
     spacingMm,
+    placedItems,
+    isStandardMode,
     fabricCanvasRef.current
   ])
+
+  // Display label for stats bar
+  const displayLabel = isStandardMode
+    ? `${idDef.width} × ${idDef.height} mm`
+    : idSize === 'package_3x3'
+      ? '3×3 Combo'
+      : 'Custom Mix'
+
+  const displayCount = isStandardMode ? totalFitCount : placedItems.length
 
   return (
     <main className="workspace">
@@ -269,11 +383,11 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
               </div>
               <div className="stat-pill">
                 <span className="stat-label">ID Size:</span>
-                <span className="stat-value">{idDef.width} × {idDef.height} mm</span>
+                <span className="stat-value">{displayLabel}</span>
               </div>
               <div className="stat-pill">
                 <span className="stat-label">Photos Fitted:</span>
-                <span className="stat-value">{totalFitCount}</span>
+                <span className="stat-value">{displayCount}</span>
               </div>
             </div>
           )}
@@ -350,6 +464,7 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
         orientation={orientation}
         idSize={idSize}
         idSpacing={idSpacing}
+        mixedQuantities={mixedQuantities}
       />
     </main>
   )
