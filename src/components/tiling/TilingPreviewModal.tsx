@@ -148,8 +148,24 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
         ctx.rect(0, 0, cellW, cellH)
         ctx.clip()
 
+        // Force pure white background to eliminate black fill artifacts
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, cellW, cellH)
+
         ctx.drawImage(tempCanvas, srcX, srcY, srcW, srcH, destX, destY, destW, destH)
         ctx.restore()
+
+        // Draw dashed guide boundary rectangle showing the shrunk safe zone
+        if (showMargin && marginPx > 0) {
+          ctx.save()
+          ctx.strokeStyle = '#9CA3AF'
+          ctx.lineWidth = 0.5 * P
+          ctx.setLineDash([4 * P, 4 * P])
+          ctx.beginPath()
+          ctx.rect(marginPx, marginPx, cellW - (marginPx * 2), cellH - (marginPx * 2))
+          ctx.stroke()
+          ctx.restore()
+        }
       } else {
         // Bleed mode
         ctx.save()
@@ -196,7 +212,7 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
       const bleedPx = overlap * P
       const cellW = paperWidthMM * P
       const cellH = paperHeightMM * P
-      const textColor = '#9CA3AF' // Clean, light neutral gray for print guidelines
+      const textColor = '#6B7280' // Crisp neutral dark gray for sharp visibility
 
       ctx.save()
 
@@ -217,19 +233,27 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
         ctx.stroke();
         ctx.restore();
 
-        // Render vertical text guide inside the gutter track
+        // Render vertical text guide inside the gutter track — clipped to white gutter bounds
         ctx.save();
+        // Clip strictly to the white gutter rectangle so text never bleeds into image area
+        ctx.beginPath();
+        ctx.rect(cellW - bleedPx, 0, bleedPx, cellH);
+        ctx.clip();
+
         ctx.fillStyle = textColor;
-        ctx.font = `bold ${Math.min(10 * P, bleedPx * 0.45)}px sans-serif`;
+        const adaptiveFontV = Math.max(6 * P, Math.min(10 * P, bleedPx * 0.4));
+        ctx.font = `bold ${adaptiveFontV}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // Pivot strictly at the horizontal center line of the white gutter box
-        ctx.translate(cellW - (bleedPx / 2), cellH / 2);
+        // Strict mathematical center of ONLY the white gutter rectangle block
+        const gutterCenterX = cellW - (bleedPx / 2);
+        const gutterCenterY = cellH / 2;
+        ctx.translate(gutterCenterX, gutterCenterY);
         ctx.rotate(Math.PI / 2);
-        if (bleedPx > 20 * P) {
-          ctx.fillText("--- PASTE HERE ---", 0, 0);
-        }
+
+        const labelV = bleedPx < 18 * P ? "PASTE HERE" : "--- PASTE HERE ---";
+        ctx.fillText(labelV, 0, 0);
         ctx.restore();
       }
 
@@ -250,15 +274,22 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
         ctx.stroke();
         ctx.restore();
 
-        // Render horizontal cut alignment tracker
+        // Render horizontal paste alignment tracker — clipped to white gutter bounds
         ctx.save();
+        // Clip strictly to the white gutter rectangle so text never bleeds into image area
+        ctx.beginPath();
+        ctx.rect(0, cellH - bleedPx, cellW, bleedPx);
+        ctx.clip();
+
         ctx.fillStyle = textColor;
-        ctx.font = `bold ${Math.min(10 * P, bleedPx * 0.45)}px sans-serif`;
+        const adaptiveFontH = Math.max(6 * P, Math.min(10 * P, bleedPx * 0.4));
+        ctx.font = `bold ${adaptiveFontH}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        if (bleedPx > 20 * P) {
-          ctx.fillText("--- CUT HERE ---", cellW / 2, cellH - (bleedPx / 2));
-        }
+
+        const gutterCenterYB = cellH - (bleedPx / 2);
+        const labelH = bleedPx < 18 * P ? "PASTE HERE" : "--- PASTE HERE ---";
+        ctx.fillText(labelH, cellW / 2, gutterCenterYB);
         ctx.restore();
       }
 
@@ -468,10 +499,18 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
           pageCanvas.height = srcH;
           const pageCtx = pageCanvas.getContext('2d');
           if (pageCtx) {
+            // Force pure white background to eliminate black fill artifacts
+            pageCtx.fillStyle = '#ffffff';
+            pageCtx.fillRect(0, 0, srcW, srcH);
+
             pageCtx.drawImage(tempCanvas, srcX, sy, srcW, srcH, 0, 0, srcW, srcH);
             const sliceDataUrl = pageCanvas.toDataURL(imageFormat === 'PNG' ? 'image/png' : 'image/jpeg');
 
             docAny.saveGraphicsState();
+
+            // Force white page background in PDF before image
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(0, 0, paperWidthMM, paperHeightMM, 'F');
 
             // Clip cleanly to the outer edge of this sheet page
             docAny.rect(0, 0, paperWidthMM, paperHeightMM, null);
@@ -488,6 +527,16 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
               'FAST'
             );
             docAny.restoreGraphicsState();
+
+            // Draw dashed guide boundary rectangle showing the shrunk safe zone
+            if (marginMm > 0) {
+              pdf.saveGraphicsState();
+              pdf.setDrawColor(156, 163, 175);
+              pdf.setLineWidth(0.15);
+              pdf.setLineDashPattern([1.0, 1.0], 0);
+              pdf.rect(marginMm, marginMm, paperWidthMM - (marginMm * 2), paperHeightMM - (marginMm * 2), 'S');
+              pdf.restoreGraphicsState();
+            }
           }
         } else {
           // Bleed Mode
@@ -553,12 +602,12 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
 
           const midX = paperWidthMM / 2;
           const midY = paperHeightMM / 2;
-          const textFillRGB = [156, 163, 175]; // neutral gray #9ca3af
+          const textFillRGB = [107, 114, 128]; // crisp neutral dark gray #6B7280
           pdf.setTextColor(textFillRGB[0], textFillRGB[1], textFillRGB[2]);
 
           const labelFontSize = Math.max(4, Math.min(7.5, margin * 0.4));
           pdf.setFontSize(labelFontSize);
-          pdf.setFont('helvetica', 'normal');
+          pdf.setFont('helvetica', 'bold');
 
           // A. Right Edge Gutter Indicator
           if (c < tilingCols - 1) {
@@ -572,13 +621,15 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
             pdf.setLineDashPattern([1.0, 1.0], 0);
             pdf.line(paperWidthMM - margin, 0, paperWidthMM - margin, paperHeightMM);
 
-            // Render vertical text guide inside the white block
-            if (margin > 20) {
-              pdf.text('--- PASTE HERE ---', paperWidthMM - margin / 2, midY, {
-                align: 'center',
-                angle: 90
-              });
-            }
+            // Render vertical paste guide — strict gutter center anchor lock
+            const pdfGutterCenterX = paperWidthMM - (margin / 2);
+            const pdfGutterCenterY = midY;
+            const labelR = margin < 18 ? 'PASTE HERE' : '--- PASTE HERE ---';
+            pdf.text(labelR, pdfGutterCenterX, pdfGutterCenterY, {
+              angle: -90,
+              align: 'center',
+              baseline: 'middle'
+            });
           }
 
           // B. Bottom Edge Gutter Indicator
@@ -593,12 +644,11 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
             pdf.setLineDashPattern([1.0, 1.0], 0);
             pdf.line(0, paperHeightMM - margin, paperWidthMM, paperHeightMM - margin);
 
-            // Render horizontal text guide inside the white block
-            if (margin > 20) {
-              pdf.text('--- CUT HERE ---', midX, paperHeightMM - margin / 2 + 0.8, {
-                align: 'center'
-              });
-            }
+            // Render horizontal paste guide inside the white block — clipped to gutter bounds
+            const labelB = margin < 18 ? 'PASTE HERE' : '--- PASTE HERE ---';
+            pdf.text(labelB, midX, paperHeightMM - margin / 2 + 0.8, {
+              align: 'center'
+            });
           }
 
           pdf.restoreGraphicsState();
