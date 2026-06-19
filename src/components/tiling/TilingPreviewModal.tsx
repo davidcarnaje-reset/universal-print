@@ -24,6 +24,12 @@ interface TilingPreviewModalProps {
   imageTransform: ImageTransform
   canvasWidth: number
   canvasHeight: number
+  overlap: number
+  setOverlap: (val: number) => void
+  showMargin: boolean
+  setShowMargin: (val: boolean) => void
+  tilingMode: 'bleed' | 'shrink'
+  setTilingMode: (mode: 'bleed' | 'shrink') => void
 }
 
 interface PagePreviewCanvasProps {
@@ -43,6 +49,7 @@ interface PagePreviewCanvasProps {
   showCutLines: boolean
   showScissorMarks: boolean
   previewZoom: number
+  tilingMode: 'bleed' | 'shrink'
 }
 
 const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
@@ -61,19 +68,14 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
   showMargin,
   showCutLines,
   showScissorMarks,
-  previewZoom
+  previewZoom,
+  tilingMode
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  // Calculate margins for the page slice
-  const marginVal = showMargin ? overlap : 0
-  const marginLeft = (col > 0) ? marginVal : 0
-  const marginRight = (col < tilingCols - 1) ? marginVal : 0
-  const marginTop = (row > 0) ? marginVal : 0
-  const marginBottom = (row < tilingRows - 1) ? marginVal : 0
-
-  const pageW_MM = paperWidthMM + marginLeft + marginRight
-  const pageH_MM = paperHeightMM + marginTop + marginBottom
+  // The preview page is sized exactly to the physical paper dimensions
+  const pageW_MM = paperWidthMM
+  const pageH_MM = paperHeightMM
 
   // Canvas drawing scale (constant for crisp rendering)
   const P = 2.0
@@ -84,46 +86,97 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+
     // Clear and draw white background
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, pageW_MM * P, pageH_MM * P)
 
-    // Grid cell dimensions on screen canvas
-    const cellW = canvasWidth / tilingCols
-    const cellH = canvasHeight / tilingRows
-
-    // Scale conversion factor from screen canvas to page preview coordinates
-    // Screen canvas uses CANVAS_SCALE = 2.0 (pixels per mm), and preview canvas uses P = 2.0
-    const kX = (paperWidthMM * P) / cellW
-    const kY = (paperHeightMM * P) / cellH
-
     if (imageElement) {
-      // Distance from cell top-left to image center on screen canvas
-      const dx = imageTransform.left - col * cellW
-      const dy = imageTransform.top - row * cellH
+      const cellW = paperWidthMM * P
+      const cellH = paperHeightMM * P
+      const bleedPx = showMargin ? overlap * P : 0
 
-      // Target translation and scale in preview coordinates
-      const targetX = marginLeft * P + dx * kX
-      const targetY = marginTop * P + dy * kY
-      const targetScaleX = imageTransform.scaleX * kX
-      const targetScaleY = imageTransform.scaleY * kY
-      const angleRad = (imageTransform.angle * Math.PI) / 180
+      const left = imageTransform?.left ?? (canvasWidth / 2)
+      const top = imageTransform?.top ?? (canvasHeight / 2)
+      const scaleX = imageTransform?.scaleX ?? 1
+      const scaleY = imageTransform?.scaleY ?? 1
+      const angle = imageTransform?.angle ?? 0
 
-      // Clip image drawing to the active paper area (excludes overlap margins)
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(marginLeft * P, marginTop * P, paperWidthMM * P, paperHeightMM * P)
-      ctx.clip()
+      const originalImageWidth = imageElement.width
+      const originalImageHeight = imageElement.height
 
-      // Draw image with transforms
-      ctx.save()
-      ctx.translate(targetX, targetY)
-      ctx.rotate(angleRad)
-      ctx.scale(targetScaleX, targetScaleY)
-      ctx.drawImage(imageElement, -imageElement.width / 2, -imageElement.height / 2, imageElement.width, imageElement.height)
-      ctx.restore()
+      const imgScaledWidth = originalImageWidth * scaleX
+      const imgScaledHeight = originalImageHeight * scaleY
+      const imgLeft = left - imgScaledWidth / 2
+      const imgTop = top - imgScaledHeight / 2
 
-      ctx.restore() // restore clipping state
+      if (tilingMode === 'shrink') {
+        const marginPx = bleedPx
+
+        // STEP A: Source Window - Extract the exact 1:1 chunk of the layout canvas zone for this sheet
+        const srcX = col * cellW
+        const srcY = row * cellH
+        const srcW = cellW
+        const srcH = cellH
+
+        // STEP B: Destination Window - Push coordinates INWARD symmetrically on all 4 sides to shrink the frame
+        const destX = marginPx
+        const destY = marginPx
+        const destW = cellW - (marginPx * 2)
+        const destH = cellH - (marginPx * 2)
+
+        // Build temp canvas representing the entire workspace layout zone
+        const tempCanvas = document.createElement('canvas')
+        tempCanvas.width = canvasWidth
+        tempCanvas.height = canvasHeight
+        const tempCtx = tempCanvas.getContext('2d')
+        if (tempCtx) {
+          tempCtx.save()
+          if (angle !== 0) {
+            tempCtx.translate(left, top)
+            tempCtx.rotate((angle * Math.PI) / 180)
+            tempCtx.drawImage(imageElement, -imgScaledWidth / 2, -imgScaledHeight / 2, imgScaledWidth, imgScaledHeight)
+          } else {
+            tempCtx.drawImage(imageElement, imgLeft, imgTop, imgScaledWidth, imgScaledHeight)
+          }
+          tempCtx.restore()
+        }
+
+        ctx.save()
+        // Clip cleanly to the outer edge of this sheet
+        ctx.beginPath()
+        ctx.rect(0, 0, cellW, cellH)
+        ctx.clip()
+
+        ctx.drawImage(tempCanvas, srcX, srcY, srcW, srcH, destX, destY, destW, destH)
+        ctx.restore()
+      } else {
+        // Bleed mode
+        ctx.save()
+        // Clip cleanly to the outer edge of this specific paper cell sheet
+        ctx.beginPath()
+        ctx.rect(0, 0, cellW, cellH)
+        ctx.clip()
+
+        // Expand image proportions globally to enforce true data overlap projection
+        const expandedWidth = imgScaledWidth + (bleedPx * (tilingCols - 1))
+        const expandedHeight = imgScaledHeight + (bleedPx * (tilingRows - 1))
+
+        const dx = imgLeft - (col * cellW) + (col * bleedPx)
+        const dy = imgTop - (row * cellH) + (row * bleedPx)
+
+        if (angle !== 0) {
+          const cx = left - col * cellW + col * bleedPx
+          const cy = top - row * cellH + row * bleedPx
+          ctx.translate(cx, cy)
+          ctx.rotate((angle * Math.PI) / 180)
+          ctx.drawImage(imageElement, -expandedWidth / 2, -expandedHeight / 2, expandedWidth, expandedHeight)
+        } else {
+          ctx.drawImage(imageElement, dx, dy, expandedWidth, expandedHeight)
+        }
+
+        ctx.restore()
+      }
     } else {
       // Draw placeholder text if no image
       ctx.fillStyle = '#94a3b8'
@@ -136,101 +189,80 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
     // Draw solid border of the active area (visual helper showing active paper edges)
     ctx.strokeStyle = '#e2e8f0'
     ctx.lineWidth = 0.5 * P
-    ctx.strokeRect(marginLeft * P, marginTop * P, paperWidthMM * P, paperHeightMM * P)
+    ctx.strokeRect(0, 0, pageW_MM * P, pageH_MM * P)
 
-    // Draw alignment guides (Cut/Paste) in the white margins
-    if (showMargin && overlap > 0) {
-      const guideColor = '#3b82f6'
-      ctx.strokeStyle = guideColor
-      ctx.fillStyle = guideColor
-      ctx.font = `${Math.max(6, 3 * P)}px sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.lineWidth = 0.4 * P
-      ctx.setLineDash([2 * P, 2 * P])
+    // --- STEP C: BRING BACK THE BEAUTIFUL UI (Shaded Overlap Guides & Dash Lines) ---
+    if (tilingMode === 'bleed' && showMargin && overlap > 0) {
+      const bleedPx = overlap * P
+      const cellW = paperWidthMM * P
+      const cellH = paperHeightMM * P
+      const textColor = '#9CA3AF' // Clean, light neutral gray for print guidelines
 
-      const pageW = pageW_MM * P
-      const pageH = pageH_MM * P
+      ctx.save()
 
-      // LEFT Edge Guide (if col > 0)
-      if (col > 0) {
-        const marginText = "- CUT HERE -"
-        const lineX = marginLeft * P
-        const textX = (marginLeft / 2) * P
+      // A. Vertical Seam Rule (Right Side Gutter Indicator)
+      if (col < tilingCols - 1 && bleedPx > 0) {
+        // Enforce solid white block to hide bleeding edges completely
+        ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+        ctx.fillRect(cellW - bleedPx, 0, bleedPx, cellH);
 
-        if (showCutLines) {
-          ctx.beginPath()
-          ctx.moveTo(lineX, 0)
-          ctx.lineTo(lineX, pageH)
-          ctx.stroke()
+        // Draw ultra-thin dashed alignment separator
+        ctx.save();
+        ctx.strokeStyle = textColor;
+        ctx.lineWidth = 0.5 * P;
+        ctx.setLineDash([4 * P, 4 * P]);
+        ctx.beginPath();
+        ctx.moveTo(cellW - bleedPx, 0);
+        ctx.lineTo(cellW - bleedPx, cellH);
+        ctx.stroke();
+        ctx.restore();
+
+        // Render vertical text guide inside the gutter track
+        ctx.save();
+        ctx.fillStyle = textColor;
+        ctx.font = `bold ${Math.min(10 * P, bleedPx * 0.45)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        // Pivot strictly at the horizontal center line of the white gutter box
+        ctx.translate(cellW - (bleedPx / 2), cellH / 2);
+        ctx.rotate(Math.PI / 2);
+        if (bleedPx > 20 * P) {
+          ctx.fillText("--- PASTE HERE ---", 0, 0);
         }
-
-        if (showScissorMarks) {
-          ctx.save()
-          ctx.translate(textX, pageH / 2)
-          ctx.rotate(Math.PI / 2)
-          ctx.fillText(marginText, 0, 0)
-          ctx.restore()
-        }
+        ctx.restore();
       }
 
-      // RIGHT Edge Guide (if col < tilingCols - 1)
-      if (col < tilingCols - 1) {
-        const marginText = "--- PASTE HERE --->"
-        const lineX = (marginLeft + paperWidthMM) * P
-        const textX = (marginLeft + paperWidthMM + marginRight / 2) * P
+      // B. Bottom Edge Gutter Indicator
+      if (row < tilingRows - 1 && bleedPx > 0) {
+        // Enforce solid white block to hide bleeding edges completely
+        ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+        ctx.fillRect(0, cellH - bleedPx, cellW, bleedPx);
 
-        if (showCutLines) {
-          ctx.beginPath()
-          ctx.moveTo(lineX, 0)
-          ctx.lineTo(lineX, pageH)
-          ctx.stroke()
-        }
+        // Draw ultra-thin dashed alignment separator
+        ctx.save();
+        ctx.strokeStyle = textColor;
+        ctx.lineWidth = 0.5 * P;
+        ctx.setLineDash([4 * P, 4 * P]);
+        ctx.beginPath();
+        ctx.moveTo(0, cellH - bleedPx);
+        ctx.lineTo(cellW, cellH - bleedPx);
+        ctx.stroke();
+        ctx.restore();
 
-        if (showScissorMarks) {
-          ctx.save()
-          ctx.translate(textX, pageH / 2)
-          ctx.rotate(-Math.PI / 2)
-          ctx.fillText(marginText, 0, 0)
-          ctx.restore()
+        // Render horizontal cut alignment tracker
+        ctx.save();
+        ctx.fillStyle = textColor;
+        ctx.font = `bold ${Math.min(10 * P, bleedPx * 0.45)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        if (bleedPx > 20 * P) {
+          ctx.fillText("--- CUT HERE ---", cellW / 2, cellH - (bleedPx / 2));
         }
+        ctx.restore();
       }
 
-      // TOP Edge Guide (if row > 0)
-      if (row > 0) {
-        const marginText = "- CUT HERE -"
-        const lineY = marginTop * P
-        const textY = (marginTop / 2) * P
-
-        if (showCutLines) {
-          ctx.beginPath()
-          ctx.moveTo(0, lineY)
-          ctx.lineTo(pageW, lineY)
-          ctx.stroke()
-        }
-
-        if (showScissorMarks) {
-          ctx.fillText(marginText, pageW / 2, textY)
-        }
-      }
-
-      // BOTTOM Edge Guide (if row < tilingRows - 1)
-      if (row < tilingRows - 1) {
-        const marginText = "--- PASTE HERE --->"
-        const lineY = (marginTop + paperHeightMM) * P
-        const textY = (marginTop + paperHeightMM + marginBottom / 2) * P
-
-        if (showCutLines) {
-          ctx.beginPath()
-          ctx.moveTo(0, lineY)
-          ctx.lineTo(pageW, lineY)
-          ctx.stroke()
-        }
-
-        if (showScissorMarks) {
-          ctx.fillText(marginText, pageW / 2, textY)
-        }
-      }
+      ctx.restore()
     }
   }, [
     row,
@@ -250,11 +282,8 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
     showScissorMarks,
     pageW_MM,
     pageH_MM,
-    marginLeft,
-    marginRight,
-    marginTop,
-    marginBottom,
-    P
+    P,
+    tilingMode
   ])
 
   return (
@@ -293,10 +322,14 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
   orientation,
   imageTransform,
   canvasWidth,
-  canvasHeight
+  canvasHeight,
+  overlap,
+  setOverlap,
+  showMargin,
+  setShowMargin,
+  tilingMode,
+  setTilingMode
 }) => {
-  const [overlap, setOverlap] = useState<number>(15)
-  const [showMargin, setShowMargin] = useState<boolean>(true)
   const [showCutLines, setShowCutLines] = useState<boolean>(true)
   const [showScissorMarks, setShowScissorMarks] = useState<boolean>(true)
   const [previewZoom, setPreviewZoom] = useState<number>(0.5)
@@ -334,8 +367,6 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
   const generateHighResPDF = async (): Promise<jsPDF | null> => {
     if (!uploadedImage) return null
 
-    const ratio300 = 11.811
-
     const pdf = new jsPDF({
       orientation: orientation,
       unit: 'mm',
@@ -350,153 +381,234 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
       tempImg.src = uploadedImage
     })
 
-    const cellW = canvasWidth / tilingCols
-    const cellH = canvasHeight / tilingRows
+    // Detect image format from source URL/Base64
+    let imageFormat = 'JPEG'
+    const lowerSrc = uploadedImage.toLowerCase()
+    if (lowerSrc.startsWith('data:image/png') || lowerSrc.endsWith('.png')) {
+      imageFormat = 'PNG'
+    } else if (lowerSrc.startsWith('data:image/webp') || lowerSrc.endsWith('.webp')) {
+      imageFormat = 'WEBP'
+    } else if (lowerSrc.startsWith('data:image/gif') || lowerSrc.endsWith('.gif')) {
+      imageFormat = 'GIF'
+    }
 
-    // Scale factors mapping grid cells to paper dimensions at 300 DPI
-    const kX = (paperWidthMM * ratio300) / cellW
-    const kY = (paperHeightMM * ratio300) / cellH
+    const left = imageTransform?.left ?? (canvasWidth / 2);
+    const top = imageTransform?.top ?? (canvasHeight / 2);
+    const scaleX = imageTransform?.scaleX ?? 1;
+    const scaleY = imageTransform?.scaleY ?? 1;
+    const angle = imageTransform?.angle ?? 0;
 
-    const { left, top, scaleX, scaleY, angle } = imageTransform
+    const originalImageWidth = img.width;
+    const originalImageHeight = img.height;
+
+    const scaleFactor = 0.5;
+    const imgScaledWidth = originalImageWidth * scaleX * scaleFactor;
+    const imgScaledHeight = originalImageHeight * scaleY * scaleFactor;
+    const imgLeft = (left - (originalImageWidth * scaleX) / 2) * scaleFactor;
+    const imgTop = (top - (originalImageHeight * scaleY) / 2) * scaleFactor;
+
+    // 1. Pre-render the high-res layout canvas of the entire workspace if tilingMode === 'shrink'
+    let tempCanvas: HTMLCanvasElement | null = null;
+    const dpiScale = 300 / 25.4; // 300 DPI in px/mm
+
+    if (tilingMode === 'shrink') {
+      const canvasW = tilingCols * paperWidthMM * dpiScale;
+      const canvasH = tilingRows * paperHeightMM * dpiScale;
+
+      tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvasW;
+      tempCanvas.height = canvasH;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (tempCtx) {
+        tempCtx.save();
+        // Clear temp canvas with white background (or transparent)
+        tempCtx.fillStyle = 'rgba(255, 255, 255, 0)';
+        tempCtx.fillRect(0, 0, canvasW, canvasH);
+
+        const leftPx = left * scaleFactor * dpiScale;
+        const topPx = top * scaleFactor * dpiScale;
+        const imgWPx = imgScaledWidth * dpiScale;
+        const imgHPx = imgScaledHeight * dpiScale;
+
+        if (angle !== 0) {
+          tempCtx.translate(leftPx, topPx);
+          tempCtx.rotate((angle * Math.PI) / 180);
+          tempCtx.drawImage(img, -imgWPx / 2, -imgHPx / 2, imgWPx, imgHPx);
+        } else {
+          tempCtx.drawImage(img, leftPx - imgWPx / 2, topPx - imgHPx / 2, imgWPx, imgHPx);
+        }
+        tempCtx.restore();
+      }
+    }
 
     for (let r = 0; r < tilingRows; r++) {
       for (let c = 0; c < tilingCols; c++) {
         if (r > 0 || c > 0) pdf.addPage();
 
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const glueOverlapMargin = showMargin ? overlap : 0;
-        const margin = glueOverlapMargin;
+        const margin = showMargin ? overlap : 0;
+        const docAny = pdf as any;
 
-        // Derive physical margin offsets for this cell position
-        const marginLeft = (c > 0) ? margin : 0;
-        const marginRight = (c < tilingCols - 1) ? margin : 0;
-        const marginTopVal = (r > 0) ? margin : 0;
-        const marginBottom = (r < tilingRows - 1) ? margin : 0;
+        if (tilingMode === 'shrink' && tempCanvas) {
+          const marginMm = showMargin ? overlap : 0;
 
-        // Strict pixel boundary: canvas sized EXACTLY to the PDF page dimensions at 300 DPI
-        const canvasPxW = Math.round(paperWidthMM * ratio300);
-        const canvasPxH = Math.round(paperHeightMM * ratio300);
+          // STEP A: Source Window
+          const srcW = paperWidthMM * dpiScale;
+          const srcH = paperHeightMM * dpiScale;
+          const srcX = c * srcW;
+          const sy = r * srcH;
 
-        const canvas = document.createElement('canvas');
-        canvas.width = canvasPxW;
-        canvas.height = canvasPxH;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) continue;
+          // STEP B: Destination Window
+          const destX = marginMm;
+          const destY = marginMm;
+          const destW = paperWidthMM - (marginMm * 2);
+          const destH = paperHeightMM - (marginMm * 2);
 
-        // White background for full page
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvasPxW, canvasPxH);
+          const pageCanvas = document.createElement('canvas');
+          pageCanvas.width = srcW;
+          pageCanvas.height = srcH;
+          const pageCtx = pageCanvas.getContext('2d');
+          if (pageCtx) {
+            pageCtx.drawImage(tempCanvas, srcX, sy, srcW, srcH, 0, 0, srcW, srcH);
+            const sliceDataUrl = pageCanvas.toDataURL(imageFormat === 'PNG' ? 'image/png' : 'image/jpeg');
 
-        // --- STRICT CLIPPING CONSTRAINT ---
-        // The cell boundary in screen-canvas coordinates
-        const cellX0 = c * cellW;       // left edge of this cell
-        const cellY0 = r * cellH;       // top edge of this cell
+            docAny.saveGraphicsState();
 
-        // Image center relative to this cell's top-left corner
-        const dx = left - cellX0;
-        const dy = top - cellY0;
+            // Clip cleanly to the outer edge of this sheet page
+            docAny.rect(0, 0, paperWidthMM, paperHeightMM, null);
+            docAny.clip();
 
-        // Map to 300 DPI coordinates, offset by the margin zone
-        const targetX = marginLeft * ratio300 + dx * kX;
-        const targetY = marginTopVal * ratio300 + dy * kY;
-        const targetScaleX = scaleX * kX;
-        const targetScaleY = scaleY * kY;
-        const angleRad = (angle * Math.PI) / 180;
-
-        // Clip strictly to the active paper area of the layout cell (excluding overlap margin areas)
-        // This enforces that no image pixel bleeds past the cell division point (dashed guidelines)
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(
-          marginLeft * ratio300,
-          marginTopVal * ratio300,
-          (paperWidthMM - marginLeft - marginRight) * ratio300,
-          (paperHeightMM - marginTopVal - marginBottom) * ratio300
-        );
-        ctx.clip();
-
-        // Draw the image with transform
-        ctx.save();
-        ctx.translate(targetX, targetY);
-        ctx.rotate(angleRad);
-        ctx.scale(targetScaleX, targetScaleY);
-        ctx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
-        ctx.restore();
-        ctx.restore();
-
-        const tileImgData = canvas.toDataURL('image/jpeg', 0.95);
-
-        // 1. STRICT FULL BLEED: Image slice occupies the entire page
-        pdf.addImage(tileImgData, 'JPEG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
-
-        const showGuides = showMargin;
-
-        // 2. OVERLAY MASKING LAYER
-        if (showGuides) {
-          pdf.setLineWidth(0.2);
-          if (typeof (pdf as any).setLineDashPattern === 'function') {
-            (pdf as any).setLineDashPattern([2, 2], 0);
-          } else if (typeof (pdf as any).setLineDash === 'function') {
-            (pdf as any).setLineDash([2, 2], 0);
+            docAny.addImage(
+              sliceDataUrl,
+              imageFormat,
+              destX,
+              destY,
+              destW,
+              destH,
+              undefined,
+              'FAST'
+            );
+            docAny.restoreGraphicsState();
           }
-          pdf.setDrawColor(180, 180, 180);
+        } else {
+          // Bleed Mode
+          const bleedMm = margin;
+          const expandedWidth = imgScaledWidth + (bleedMm * (tilingCols - 1));
+          const expandedHeight = imgScaledHeight + (bleedMm * (tilingRows - 1));
+
+          const drawLeft = imgLeft - c * paperWidthMM + c * bleedMm;
+          const drawTop = imgTop - r * paperHeightMM + r * bleedMm;
+
+          docAny.saveGraphicsState();
+
+          // Clip cleanly to the outer edge of this sheet page
+          docAny.rect(0, 0, paperWidthMM, paperHeightMM, null);
+          docAny.clip();
+
+          if (angle !== 0) {
+            const cx = left * scaleFactor - c * paperWidthMM + c * bleedMm;
+            const cy = top * scaleFactor - r * paperHeightMM + r * bleedMm;
+            const theta = (angle * Math.PI) / 180;
+            const rotatedDrawLeft = cx - (expandedWidth / 2) * Math.cos(theta) + (expandedHeight / 2) * Math.sin(theta);
+            const rotatedDrawTop = cy - (expandedWidth / 2) * Math.sin(theta) - (expandedHeight / 2) * Math.cos(theta);
+
+            docAny.addImage(
+              img,
+              imageFormat,
+              rotatedDrawLeft,
+              rotatedDrawTop,
+              expandedWidth,
+              expandedHeight,
+              undefined,
+              'FAST',
+              angle
+            );
+          } else {
+            docAny.addImage(
+              img,
+              imageFormat,
+              drawLeft,
+              drawTop,
+              expandedWidth,
+              expandedHeight,
+              undefined,
+              'FAST'
+            );
+          }
+
+          docAny.restoreGraphicsState();
+        }
+
+        // Draw solid page border helper if showMargin is active (very clean light gray outline)
+        if (showMargin) {
+          pdf.saveGraphicsState();
+          pdf.setLineWidth(0.1);
+          pdf.setDrawColor(220, 220, 220);
+          pdf.rect(0, 0, paperWidthMM, paperHeightMM, 'S');
+          pdf.restoreGraphicsState();
+        }
+
+        // Draw visual indicators on PDF borders (Solid Clean White Gutters, ultra-thin dashed separators, and grey text alignment instructions)
+        if (tilingMode === 'bleed' && showMargin && margin > 0) {
+          pdf.saveGraphicsState();
+
+          const midX = paperWidthMM / 2;
+          const midY = paperHeightMM / 2;
+          const textFillRGB = [156, 163, 175]; // neutral gray #9ca3af
+          pdf.setTextColor(textFillRGB[0], textFillRGB[1], textFillRGB[2]);
+
+          const labelFontSize = Math.max(4, Math.min(7.5, margin * 0.4));
+          pdf.setFontSize(labelFontSize);
           pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(7);
-          pdf.setTextColor(140, 140, 140);
 
-          const midX = pageWidth / 2;
-          const midY = pageHeight / 2;
-
-          // 1. LEFT SIDE GUIDELINES (Middle and Right columns)
-          if (c > 0) {
-            const lineX = margin; 
-            pdf.line(lineX, 0, lineX, pageHeight);
-            
-            // Plain horizontal text, left-aligned, right next to the left edge of the paper
-            // Stacked safely halfway down the page height
-            pdf.text('CUT', 2, midY - 2);
-            pdf.text('HERE', 2, midY + 2);
-          }
-
-          // 2. RIGHT SIDE GUIDELINES (Left and Middle columns)
+          // A. Right Edge Gutter Indicator
           if (c < tilingCols - 1) {
-            const lineX = pageWidth - margin;
-            pdf.line(lineX, 0, lineX, pageHeight);
-            
-            // Plain horizontal text, anchored safely between lineX and the right physical edge of the paper
-            // Using a safe static right-aligned layout to prevent image bleeding
-            pdf.text('PASTE', pageWidth - 2, midY - 2, { align: 'right' });
-            pdf.text('HERE', pageWidth - 2, midY + 2, { align: 'right' });
+            // Enforce 100% solid white block to hide bleeding artifact edges completely
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(paperWidthMM - margin, 0, margin, paperHeightMM, 'F');
+
+            // Draw ultra-thin dashed alignment separator
+            pdf.setLineWidth(0.15);
+            pdf.setDrawColor(156, 163, 175);
+            pdf.setLineDashPattern([1.0, 1.0], 0);
+            pdf.line(paperWidthMM - margin, 0, paperWidthMM - margin, paperHeightMM);
+
+            // Render vertical text guide inside the white block
+            if (margin > 20) {
+              pdf.text('--- PASTE HERE ---', paperWidthMM - margin / 2, midY, {
+                align: 'center',
+                angle: 90
+              });
+            }
           }
 
-          // 3. TOP SIDE GUIDELINES (Middle and Bottom rows)
-          if (r > 0) {
-            pdf.line(0, margin, pageWidth, margin);
-            pdf.text('- CUT HERE -', midX, margin / 2 + 1, { align: 'center' });
-          }
-
-          // 4. BOTTOM SIDE GUIDELINES (Top and Middle rows)
+          // B. Bottom Edge Gutter Indicator
           if (r < tilingRows - 1) {
-            const lineY = pageHeight - margin;
-            pdf.line(0, lineY, pageWidth, lineY);
-            pdf.text('--- PASTE HERE --->', midX, pageHeight - (margin / 2) + 1, { align: 'center' });
+            // Enforce 100% solid white block to hide bleeding artifact edges completely
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(0, paperHeightMM - margin, paperWidthMM, margin, 'F');
+
+            // Draw ultra-thin dashed alignment separator
+            pdf.setLineWidth(0.15);
+            pdf.setDrawColor(156, 163, 175);
+            pdf.setLineDashPattern([1.0, 1.0], 0);
+            pdf.line(0, paperHeightMM - margin, paperWidthMM, paperHeightMM - margin);
+
+            // Render horizontal text guide inside the white block
+            if (margin > 20) {
+              pdf.text('--- CUT HERE ---', midX, paperHeightMM - margin / 2 + 0.8, {
+                align: 'center'
+              });
+            }
           }
 
-          // Reset line dash pattern to solid
-          if (typeof (pdf as any).setLineDashPattern === 'function') {
-            (pdf as any).setLineDashPattern([], 0);
-          } else if (typeof (pdf as any).setLineDash === 'function') {
-            (pdf as any).setLineDash([], 0);
-          }
+          pdf.restoreGraphicsState();
         }
       }
     }
-
     return pdf;
-  }
+  };
 
-  const handleSavePDF = async () => {
+const handleSavePDF = async () => {
     setIsExporting(true)
     try {
       const pdf = await generateHighResPDF()
@@ -552,6 +664,7 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
           showCutLines={showCutLines}
           showScissorMarks={showScissorMarks}
           previewZoom={previewZoom}
+          tilingMode={tilingMode}
         />
       )
     }
@@ -607,9 +720,24 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
               </div>
             </div>
 
+            {/* Tiling Mode selector */}
+            <div className="footer-control-item footer-mode">
+              <label htmlFor="modal-tiling-mode">Tiling Mode</label>
+              <select
+                id="modal-tiling-mode"
+                value={tilingMode}
+                onChange={(e) => setTilingMode(e.target.value as 'bleed' | 'shrink')}
+                className="form-select"
+                style={{ width: '150px' }}
+              >
+                <option value="bleed">Bleed Mode (Overlap)</option>
+                <option value="shrink">Shrink Mode (Fit to Page)</option>
+              </select>
+            </div>
+
             {/* Overlap value slider */}
             <div className={`footer-control-item footer-overlap ${!showMargin ? 'disabled' : ''}`}>
-              <label htmlFor="modal-overlap">Glue Overlap Margin</label>
+              <label htmlFor="modal-overlap">{tilingMode === 'shrink' ? 'Page Margin' : 'Bleed Overlap'}</label>
               <div className="slider-wrapper">
                 <input
                   type="range"
@@ -633,7 +761,7 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
                   checked={showMargin}
                   onChange={(e) => setShowMargin(e.target.checked)}
                 />
-                <span>Enable Margins</span>
+                <span>{tilingMode === 'shrink' ? 'Enable Margin' : 'Enable Bleed Overlap'}</span>
               </label>
 
               <label className="toggle-label" style={{ opacity: showMargin ? 1 : 0.4 }}>

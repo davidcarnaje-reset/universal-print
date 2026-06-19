@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
-import React, { useEffect, useRef, useCallback } from 'react'
+import React, { useEffect, useRef, useCallback, useState } from 'react'
 import { Canvas, FabricImage, Line, FabricText } from 'fabric'
 import { TilingPreviewModal } from './TilingPreviewModal'
 import { isNativeApp } from '../../utils/env'
@@ -15,6 +15,12 @@ interface TilingWorkspaceProps {
   tilingCols: number
   isPreviewOpen: boolean
   setIsPreviewOpen: (open: boolean) => void
+  overlap: number
+  setOverlap: (val: number) => void
+  showMargin: boolean
+  setShowMargin: (val: boolean) => void
+  tilingMode: 'bleed' | 'shrink'
+  setTilingMode: (mode: 'bleed' | 'shrink') => void
 }
 
 export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
@@ -27,7 +33,13 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
   tilingRows,
   tilingCols,
   isPreviewOpen,
-  setIsPreviewOpen
+  setIsPreviewOpen,
+  overlap,
+  setOverlap,
+  showMargin,
+  setShowMargin,
+  tilingMode,
+  setTilingMode
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const fabricCanvasRef = useRef<Canvas | null>(null)
@@ -42,6 +54,83 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
 
   const canvasWidth = tilingCols * cellW
   const canvasHeight = tilingRows * cellH
+
+  const [imageTransformState, setImageTransformState] = useState({
+    left: canvasWidth / 2,
+    top: canvasHeight / 2,
+    scaleX: 1,
+    scaleY: 1,
+    angle: 0
+  })
+
+  // Refs to prevent stale closures inside event listeners
+  const overlapRef = useRef(overlap)
+  const showMarginRef = useRef(showMargin)
+  overlapRef.current = overlap
+  showMarginRef.current = showMargin
+
+  const tilingColsRef = useRef(tilingCols)
+  const tilingRowsRef = useRef(tilingRows)
+  tilingColsRef.current = tilingCols
+  tilingRowsRef.current = tilingRows
+
+  const cellWRef = useRef(cellW)
+  const cellHRef = useRef(cellH)
+  cellWRef.current = cellW
+  cellHRef.current = cellH
+
+  // Synchronize default position when canvas dimensions change and there's no image yet
+  useEffect(() => {
+    if (!uploadedImage) {
+      setImageTransformState({
+        left: canvasWidth / 2,
+        top: canvasHeight / 2,
+        scaleX: 1,
+        scaleY: 1,
+        angle: 0
+      })
+    }
+  }, [canvasWidth, canvasHeight, uploadedImage])
+
+  const getImageTransformForImg = (img: FabricImage | null) => {
+    if (!img) {
+      return {
+        left: canvasWidth / 2,
+        top: canvasHeight / 2,
+        scaleX: 1,
+        scaleY: 1,
+        angle: 0
+      }
+    }
+    const center = img.getCenterPoint()
+    return {
+      left: center.x,
+      top: center.y,
+      scaleX: img.scaleX || 1,
+      scaleY: img.scaleY || 1,
+      angle: img.angle || 0
+    }
+  }
+
+  const setupImageListeners = (img: FabricImage) => {
+    img.off('moving')
+    img.off('scaling')
+    img.off('rotating')
+    img.off('skewing')
+
+    img.on('moving', () => {
+      setImageTransformState(getImageTransformForImg(img))
+    })
+    img.on('scaling', () => {
+      setImageTransformState(getImageTransformForImg(img))
+    })
+    img.on('rotating', () => {
+      setImageTransformState(getImageTransformForImg(img))
+    })
+    img.on('skewing', () => {
+      setImageTransformState(getImageTransformForImg(img))
+    })
+  }
 
   const drawGridOverlay = useCallback((fc: Canvas) => {
     // 1. Remove old guide elements to prevent duplicates on re-render
@@ -121,12 +210,17 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
         drawGridOverlay(canvas)
         canvas.setActiveObject(img)
         canvas.requestRenderAll()
+        setImageTransformState(getImageTransformForImg(img))
       }
 
       const existingImg = fabricImageRef.current
       const shouldReuse = existingImg && lastLoadedSrcRef.current === uploadedImage && !canvasChanged
 
       if (shouldReuse) {
+        if (existingImg) {
+          existingImg.set({ opacity: 1.0 }) // Standard opacity
+          setupImageListeners(existingImg)
+        }
         runDraw(existingImg)
       } else {
         FabricImage.fromURL(uploadedImage).then((img) => {
@@ -138,6 +232,7 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
 
           img.scaleToWidth(canvas.getWidth() * 0.6)
           img.set({
+            id: 'tiling-target-image',
             left: canvas.getWidth() / 2,
             top: canvas.getHeight() / 2,
             originX: 'center',
@@ -149,9 +244,10 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
             borderColor: '#6366f1',
             transparentCorners: false,
             cornerSize: 8
-          })
+          } as any)
 
           img.setCoords()
+          setupImageListeners(img)
           fabricImageRef.current = img
           lastLoadedSrcRef.current = uploadedImage
           runDraw(img)
@@ -188,35 +284,13 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
     drawGridOverlay,
     fabricCanvasRef.current
   ])
-
-  // Retrieve image transforms from fabric canvas
-  const getImageTransform = () => {
-    if (!fabricImageRef.current) {
-      return {
-        left: canvasWidth / 2,
-        top: canvasHeight / 2,
-        scaleX: 1,
-        scaleY: 1,
-        angle: 0
-      }
-    }
-    const center = fabricImageRef.current.getCenterPoint()
-    return {
-      left: center.x,
-      top: center.y,
-      scaleX: fabricImageRef.current.scaleX || 1,
-      scaleY: fabricImageRef.current.scaleY || 1,
-      angle: fabricImageRef.current.angle || 0
-    }
-  }
-
   return (
     <main className="workspace">
       <header className="workspace-header">
         <div className="workspace-title-area">
           <h2>Layout Canvas (Tiling Mode)</h2>
           <p className="workspace-subtitle">
-            Visual grid overlay of the print pages with overlap margins (Drag/Scale/Rotate image below grid)
+            Visual grid overlay of the print pages with bleed overlap (Drag/Scale/Rotate image below grid)
           </p>
         </div>
         <div className="workspace-controls-header">
@@ -309,9 +383,15 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
         paperWidthMM={paperWidthMM}
         paperHeightMM={paperHeightMM}
         orientation={orientation === 'landscape' ? 'landscape' : 'portrait'}
-        imageTransform={getImageTransform()}
+        imageTransform={imageTransformState}
         canvasWidth={canvasWidth}
         canvasHeight={canvasHeight}
+        overlap={overlap}
+        setOverlap={setOverlap}
+        showMargin={showMargin}
+        setShowMargin={setShowMargin}
+        tilingMode={tilingMode}
+        setTilingMode={setTilingMode}
       />
     </main>
   )

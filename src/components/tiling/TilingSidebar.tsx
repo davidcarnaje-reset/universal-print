@@ -2,21 +2,8 @@
 import React, { useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { isNativeApp } from '../../utils/env'
+import { PAPER_SIZES } from '../../utils/paperSizes'
 
-interface PaperDimension {
-  width: number
-  height: number
-  label: string
-}
-
-const PAPER_SIZES: Record<string, PaperDimension> = {
-  "A4": { width: 210, height: 297, label: "A4 (210 x 297 mm)" },
-  "Letter": { width: 215.9, height: 279.4, label: "Letter (8.5 x 11 in)" },
-  "Legal": { width: 215.9, height: 355.6, label: "Legal (8.5 x 14 in)" },
-  "A3": { width: 297, height: 420, label: "A3 (297 x 420 mm)" },
-  "4x6": { width: 101.6, height: 152.4, label: "4\" x 6\" (Photo Paper)" },
-  "5x7": { width: 127, height: 177.8, label: "5\" x 7\" (Photo Paper)" }
-}
 
 interface TilingSidebarProps {
   activeTab: 'tiling' | 'id-picture'
@@ -36,6 +23,8 @@ interface TilingSidebarProps {
   setTilingRows: (rows: number | ((prev: number) => number)) => void
   tilingCols: number
   setTilingCols: (cols: number | ((prev: number) => number)) => void
+  tilingMode: 'bleed' | 'shrink'
+  setTilingMode: (mode: 'bleed' | 'shrink') => void
 }
 
 export const TilingSidebar: React.FC<TilingSidebarProps> = ({
@@ -55,7 +44,9 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
   tilingRows,
   setTilingRows,
   tilingCols,
-  setTilingCols
+  setTilingCols,
+  tilingMode,
+  setTilingMode
 }) => {
   
   // File dropzone trigger
@@ -159,8 +150,8 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
                 onChange={(e) => setPaperSize(e.target.value)}
                 className="form-select"
               >
-                {Object.entries(PAPER_SIZES).map(([key, item]) => (
-                  <option key={key} value={key}>{item.label}</option>
+                {PAPER_SIZES.map((item) => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
                 ))}
               </select>
             </div>
@@ -234,6 +225,19 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
         <section className="sidebar-section">
           <h2 className="section-title">Tiling Parameters</h2>
           <div className="control-group card">
+            <div className="control-field">
+              <label htmlFor="tiling-mode">Tiling Mode</label>
+              <select
+                id="tiling-mode"
+                value={tilingMode}
+                onChange={(e) => setTilingMode(e.target.value as 'bleed' | 'shrink')}
+                className="form-select"
+              >
+                <option value="bleed">Bleed Mode (Overlap)</option>
+                <option value="shrink">Shrink Mode (Fit to Page)</option>
+              </select>
+            </div>
+
             <div className="control-field">
               <div className="control-label-row">
                 <label htmlFor="tiling-rows">Rows</label>

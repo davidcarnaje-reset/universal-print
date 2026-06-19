@@ -1,21 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { TilingSidebar } from './TilingSidebar'
 import { TilingWorkspace } from './TilingWorkspace'
-
-interface PaperDimension {
-  width: number
-  height: number
-  label: string
-}
-
-const PAPER_SIZES: Record<string, PaperDimension> = {
-  "A4": { width: 210, height: 297, label: "A4 (210 x 297 mm)" },
-  "Letter": { width: 215.9, height: 279.4, label: "Letter (8.5 x 11 in)" },
-  "Legal": { width: 215.9, height: 355.6, label: "Legal (8.5 x 14 in)" },
-  "A3": { width: 297, height: 420, label: "A3 (297 x 420 mm)" },
-  "4x6": { width: 101.6, height: 152.4, label: "4\" x 6\" (Photo Paper)" },
-  "5x7": { width: 127, height: 177.8, label: "5\" x 7\" (Photo Paper)" }
-}
+import { PAPER_SIZES } from '../../utils/paperSizes'
 
 interface TilingModuleProps {
   activeTab: 'tiling' | 'id-picture'
@@ -27,7 +13,7 @@ export const TilingModule: React.FC<TilingModuleProps> = ({
   setActiveTab
 }) => {
   // Sizing & Sizing States
-  const [paperSize, setPaperSize] = useState<string>('A4')
+  const [paperSize, setPaperSize] = useState<string>('letter')
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait')
   const [zoom, setZoom] = useState<number>(1.0)
 
@@ -36,15 +22,59 @@ export const TilingModule: React.FC<TilingModuleProps> = ({
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null)
   const [uploadedFileSize, setUploadedFileSize] = useState<string | null>(null)
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('test') === 'true') {
+      setUploadedImage('/printflow-logo.png')
+      setUploadedFileName('printflow-logo.png')
+      setUploadedFileSize('0.05 MB')
+    }
+  }, [])
+
   // Tiling States
   const [tilingRows, setTilingRows] = useState<number>(2)
   const [tilingCols, setTilingCols] = useState<number>(2)
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false)
+  const [overlap, setOverlap] = useState<number>(15)
+  const [showMargin, setShowMargin] = useState<boolean>(true)
+  const [tilingMode, setTilingMode] = useState<'bleed' | 'shrink'>('bleed')
 
   // Sizing details helper
-  const paperDef = PAPER_SIZES[paperSize] || PAPER_SIZES["A4"]
+  const paperDef = PAPER_SIZES.find(p => p.id === paperSize) || PAPER_SIZES[0]
   const paperWidthMM = orientation === 'landscape' ? paperDef.height : paperDef.width
   const paperHeightMM = orientation === 'landscape' ? paperDef.width : paperDef.height
+
+  // Reference to keep track of the latest cols and rows without triggering dependencies
+  const tilingColsRef = useRef(tilingCols)
+  const tilingRowsRef = useRef(tilingRows)
+  tilingColsRef.current = tilingCols
+  tilingRowsRef.current = tilingRows
+
+  // Reference to keep track of the previous dimensions for scaling
+  const prevPaperDimRef = useRef<{ width: number; height: number }>({
+    width: 215.9, // Default Letter width in mm
+    height: 279.4 // Default Letter height in mm
+  })
+
+  // Dynamic Grid Recalculation Effect
+  useEffect(() => {
+    const prev = prevPaperDimRef.current
+    if (prev.width !== paperWidthMM || prev.height !== paperHeightMM) {
+      // Calculate the previous overall canvas physical dimension
+      const prevTotalWidth = tilingColsRef.current * prev.width
+      const prevTotalHeight = tilingRowsRef.current * prev.height
+
+      // Estimate the new grid divisions (using Math.ceil to avoid clipping the source poster)
+      const newCols = Math.max(1, Math.ceil(prevTotalWidth / paperWidthMM))
+      const newRows = Math.max(1, Math.ceil(prevTotalHeight / paperHeightMM))
+
+      setTilingCols(newCols)
+      setTilingRows(newRows)
+
+      // Update reference to the new size
+      prevPaperDimRef.current = { width: paperWidthMM, height: paperHeightMM }
+    }
+  }, [paperWidthMM, paperHeightMM])
 
   const handleClearImage = () => {
     setUploadedImage(null)
@@ -72,6 +102,8 @@ export const TilingModule: React.FC<TilingModuleProps> = ({
         setTilingRows={setTilingRows}
         tilingCols={tilingCols}
         setTilingCols={setTilingCols}
+        tilingMode={tilingMode}
+        setTilingMode={setTilingMode}
       />
 
       <TilingWorkspace
@@ -85,6 +117,12 @@ export const TilingModule: React.FC<TilingModuleProps> = ({
         tilingCols={tilingCols}
         isPreviewOpen={isPreviewOpen}
         setIsPreviewOpen={setIsPreviewOpen}
+        overlap={overlap}
+        setOverlap={setOverlap}
+        showMargin={showMargin}
+        setShowMargin={setShowMargin}
+        tilingMode={tilingMode}
+        setTilingMode={setTilingMode}
       />
     </>
   )

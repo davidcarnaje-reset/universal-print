@@ -2,21 +2,8 @@
 import React, { useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { isNativeApp } from '../../utils/env'
+import { PAPER_SIZES } from '../../utils/paperSizes'
 
-interface PaperDimension {
-  width: number
-  height: number
-  label: string
-}
-
-const PAPER_SIZES: Record<string, PaperDimension> = {
-  "A4": { width: 210, height: 297, label: "A4 (210 x 297 mm)" },
-  "Letter": { width: 215.9, height: 279.4, label: "Letter (8.5 x 11 in)" },
-  "Legal": { width: 215.9, height: 355.6, label: "Legal (8.5 x 14 in)" },
-  "A3": { width: 297, height: 420, label: "A3 (297 x 420 mm)" },
-  "4x6": { width: 101.6, height: 152.4, label: "4\" x 6\" (Photo Paper)" },
-  "5x7": { width: 127, height: 177.8, label: "5\" x 7\" (Photo Paper)" }
-}
 
 const ID_SIZES = {
   "1x1": { width: 25.4, height: 25.4, label: "1\" x 1\" (25.4 x 25.4 mm)" },
@@ -165,8 +152,8 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
                 onChange={(e) => setPaperSize(e.target.value)}
                 className="form-select"
               >
-                {Object.entries(PAPER_SIZES).map(([key, item]) => (
-                  <option key={key} value={key}>{item.label}</option>
+                {PAPER_SIZES.map((item) => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
                 ))}
               </select>
             </div>
