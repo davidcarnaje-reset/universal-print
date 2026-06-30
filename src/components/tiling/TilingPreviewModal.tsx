@@ -695,28 +695,29 @@ const handleSavePDF = async () => {
   }
 
   const handleNativePrintTrigger = async () => {
+    // 1. Set loading or preparing state flag to force view engine rendering updates
     setIsPreparingPrint(true);
-    await new Promise((resolve) => setTimeout(resolve, 100));
 
+    // 2. CRITICAL SYNC FIX: Give the React DOM a solid 500ms baseline buffer 
+    // to safely compile, map, and output all 4 print pages into the tracking document hierarchy
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // 3. Robust Image Validation Loop: Ensure every single tile element is decoded in hardware memory
+    const printImages = document.querySelectorAll('.print-tile-image-node') as NodeListOf<HTMLImageElement>;
+    const decodePromises = Array.from(printImages).map(img => {
+      if (img.complete) return Promise.resolve();
+      return img.decode().catch(() => new Promise(res => { img.onload = res; }));
+    });
+    await Promise.all(decodePromises);
+
+    // 4. One final browser layout execution tick to clear the queue
+    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 100)));
+
+    // 5. Fire the standard clean window print controller
     try {
-      // 1. Reuse our perfect jsPDF compilation matrix configuration
-      const doc = await generateHighResPDF(); 
-      if (doc) {
-        // 2. Extract data safely into a browser-native Base64 string stream (removing the URI header signature)
-        const dataUriString = doc.output('datauristring');
-        const base64String = dataUriString.split(',')[1]; // Strictly extracts only the raw base64 data array payload
-
-        // 3. Ship the payload straight to the main process cache pipeline
-        if ((window as any).electron?.ipcRenderer) {
-          (window as any).electron.ipcRenderer.send('spool-cached-pdf-print', base64String);
-        } else if ((window as any).ipcRenderer) {
-          (window as any).ipcRenderer.send('spool-cached-pdf-print', base64String);
-        } else {
-          console.error("IPC bridge unavailable in web browser context.");
-        }
-      }
+      window.print();
     } catch (error) {
-      console.error("Frontend print cache generator failed:", error);
+      console.error("Native window print execution failed:", error);
     } finally {
       setIsPreparingPrint(false);
     }
