@@ -192,6 +192,7 @@
 
 .slider-wrapper input[type="range"] {
   -webkit-appearance: none;
+  appearance: none;
   flex: 1;
   height: 4px;
   background: #23273a;
@@ -201,6 +202,7 @@
 
 .slider-wrapper input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
+  appearance: none;
   height: 14px;
   width: 14px;
   border-radius: 50%;
@@ -259,7 +261,7 @@
 .footer-actions {
   display: flex;
   gap: 0.75rem;
-  align-shrink: 0;
+  flex-shrink: 0;
 }
 
 .preview-action-btn {
@@ -307,4 +309,107 @@
 
 .preview-action-btn.primary:active:not(:disabled) {
   transform: translateY(1px);
+}
+
+@media print {
+  /* Forcefully strip all operating system and browser default margins from the paper envelope */
+  @page {
+    size: auto;   /* Maintains the user-selected orientation/size */
+    margin: 0mm !important; /* Forces 0mm boundaries to ensure absolute layout precision */
+  }
+
+  /* Clean up html/body viewport artifacts inside the print window context */
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: #FFFFFF !important;
+  }
+
+  /* Hide the main workspace app elements */
+  .app-container, .sidebar, .workspace-header, .zoom-controls-floating, .canvas-stats {
+    display: none !important;
+  }
+  
+  /* Reset the modal overlay to occupy normal page flow without fixed layout/blurs/darks */
+  .preview-modal-overlay {
+    position: static !important;
+    display: block !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    backdrop-filter: none !important;
+    overflow: visible !important;
+    width: 100% !important;
+    height: auto !important;
+    z-index: auto !important;
+  }
+
+  .preview-modal-container {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    max-width: none !important;
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .preview-modal-header, 
+  .preview-modal-footer, 
+  .preview-page-label {
+    display: none !important;
+  }
+
+  .preview-modal-body {
+    display: block !important;
+    background: #ffffff !important;
+    background-image: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .preview-matrix-scroll-container {
+    display: block !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  .preview-matrix-grid {
+    display: block !important;
+    width: 100% !important;
+    gap: 0 !important;
+  }
+
+  /* Ensure every single tile wrapper page behaves as an absolute solid block breaking cleanly */
+  .print-page-tile-wrapper {
+    display: block !important;
+    width: 100% !important;
+    height: 100vh !important; /* Force to fill full page height in print */
+    page-break-inside: avoid !important;
+    page-break-after: always !important;
+    break-inside: avoid !important;
+    break-after: page !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+  }
+
+  .print-tile-image-node {
+    box-shadow: none !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    margin: 0 auto !important;
+    page-break-inside: avoid !important;
+    object-fit: contain !important;
+  }
 }

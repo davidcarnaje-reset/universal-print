@@ -319,9 +319,12 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
     try {
       const pdf = await generateHighResPDF()
       if (pdf) {
-        const pdfBase64 = pdf.output('datauristring')
-        if ((window as any).ipcRenderer && typeof (window as any).ipcRenderer.send === 'function') {
-          (window as any).ipcRenderer.send('trigger-print', pdfBase64)
+        const dataUriString = pdf.output('datauristring')
+        const base64String = dataUriString.split(',')[1]
+
+        const ipc = (window as any).electron?.ipcRenderer || (window as any).ipcRenderer
+        if (ipc && typeof ipc.send === 'function') {
+          ipc.send('spool-cached-pdf-print', base64String)
         } else {
           alert('System printing is only available inside the desktop application. Please use "Save as PDF" instead.')
         }
@@ -359,7 +362,7 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
         <div className="preview-modal-body">
           <div className="preview-matrix-scroll-container">
             <div 
-              className="preview-page-card"
+              className="preview-page-card print-page-tile-wrapper"
               style={{
                 width: `${paperWidthMM * previewZoom}px`,
                 height: `${paperHeightMM * previewZoom}px`

@@ -51,6 +51,40 @@ ipcMain.on('trigger-print', (_event, pdfBase64: string) => {
   })
 })
 
+ipcMain.on('spool-cached-pdf-print', async (_event, pdfBase64Data: string) => {
+  const tempDir = app.getPath('temp');
+  const tempFilePath = path.join(tempDir, `printflow_spool_${Date.now()}.pdf`);
+
+  try {
+    fs.writeFileSync(tempFilePath, Buffer.from(pdfBase64Data, 'base64'));
+    let printWindow: BrowserWindow | null = new BrowserWindow({ show: false, webPreferences: { webSecurity: false } });
+    
+    printWindow.loadURL(`file://${tempFilePath}`);
+    printWindow.webContents.on('did-finish-load', () => {
+      setTimeout(() => {
+        if (!printWindow) return;
+        printWindow.webContents.print({
+          silent: false,
+          printBackground: true,
+          margins: { marginType: 'none' }
+        }, () => {
+          printWindow?.destroy();
+          printWindow = null;
+          if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
+        });
+      }, 400); // Layout stability delay
+    });
+  } catch (err) {
+    if (fs.existsSync(tempFilePath)) {
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (unlinkErr) {
+        // Ignore or log
+      }
+    }
+  }
+});
+
 // The built directory structure
 //
 // ├─┬─┬ dist

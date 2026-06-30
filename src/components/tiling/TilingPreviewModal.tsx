@@ -72,6 +72,7 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
   tilingMode
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [imgSrc, setImgSrc] = useState<string>('')
 
   // The preview page is sized exactly to the physical paper dimensions
   const pageW_MM = paperWidthMM
@@ -295,6 +296,7 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
 
       ctx.restore()
     }
+    setImgSrc(canvas.toDataURL('image/jpeg', 0.95))
   }, [
     row,
     col,
@@ -319,7 +321,7 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
 
   return (
     <div 
-      className="preview-page-card" 
+      className="preview-page-card print-page-tile-wrapper" 
       style={{ 
         width: `${pageW_MM * previewZoom}px`, 
         height: `${pageH_MM * previewZoom}px` 
@@ -332,9 +334,22 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
         style={{ 
           width: '100%', 
           height: '100%', 
-          display: 'block' 
+          display: imgSrc ? 'none' : 'block' 
         }}
       />
+      {imgSrc && (
+        <img
+          src={imgSrc}
+          className="print-tile-image-node preview-canvas"
+          alt={`Tile ${row}-${col}`}
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'block',
+            objectFit: 'contain'
+          }}
+        />
+      )}
       <div className="preview-page-label">
         Page {row + 1}, Row {row + 1} Col {col + 1}
       </div>
@@ -365,6 +380,7 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
   const [showScissorMarks, setShowScissorMarks] = useState<boolean>(true)
   const [previewZoom, setPreviewZoom] = useState<number>(0.5)
   const [isExporting, setIsExporting] = useState<boolean>(false)
+  const [isPreparingPrint, setIsPreparingPrint] = useState<boolean>(false)
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
 
   // Load image element once for drawing
@@ -516,13 +532,15 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
             docAny.rect(0, 0, paperWidthMM, paperHeightMM, null);
             docAny.clip();
 
+            const tileW = Math.round(destW);
+            const tileH = Math.round(destH);
             docAny.addImage(
               sliceDataUrl,
               imageFormat,
               destX,
               destY,
-              destW,
-              destH,
+              tileW + 0.2,
+              tileH + 0.2,
               undefined,
               'FAST'
             );
@@ -531,9 +549,9 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
             // Draw dashed guide boundary rectangle showing the shrunk safe zone
             if (marginMm > 0) {
               pdf.saveGraphicsState();
-              pdf.setDrawColor(156, 163, 175);
+              pdf.setDrawColor(180, 180, 180);
               pdf.setLineWidth(0.15);
-              pdf.setLineDashPattern([1.0, 1.0], 0);
+              pdf.setLineDashPattern([3, 3], 0);
               pdf.rect(marginMm, marginMm, paperWidthMM - (marginMm * 2), paperHeightMM - (marginMm * 2), 'S');
               pdf.restoreGraphicsState();
             }
@@ -560,25 +578,29 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
             const rotatedDrawLeft = cx - (expandedWidth / 2) * Math.cos(theta) + (expandedHeight / 2) * Math.sin(theta);
             const rotatedDrawTop = cy - (expandedWidth / 2) * Math.sin(theta) - (expandedHeight / 2) * Math.cos(theta);
 
+            const tileW = Math.round(expandedWidth);
+            const tileH = Math.round(expandedHeight);
             docAny.addImage(
               img,
               imageFormat,
               rotatedDrawLeft,
               rotatedDrawTop,
-              expandedWidth,
-              expandedHeight,
+              tileW + 0.2,
+              tileH + 0.2,
               undefined,
               'FAST',
               angle
             );
           } else {
+            const tileW = Math.round(expandedWidth);
+            const tileH = Math.round(expandedHeight);
             docAny.addImage(
               img,
               imageFormat,
               drawLeft,
               drawTop,
-              expandedWidth,
-              expandedHeight,
+              tileW + 0.2,
+              tileH + 0.2,
               undefined,
               'FAST'
             );
@@ -617,8 +639,8 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
 
             // Draw ultra-thin dashed alignment separator
             pdf.setLineWidth(0.15);
-            pdf.setDrawColor(156, 163, 175);
-            pdf.setLineDashPattern([1.0, 1.0], 0);
+            pdf.setDrawColor(180, 180, 180);
+            pdf.setLineDashPattern([3, 3], 0);
             pdf.line(paperWidthMM - margin, 0, paperWidthMM - margin, paperHeightMM);
 
             // Render vertical paste guide — strict gutter center anchor lock
@@ -640,8 +662,8 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
 
             // Draw ultra-thin dashed alignment separator
             pdf.setLineWidth(0.15);
-            pdf.setDrawColor(156, 163, 175);
-            pdf.setLineDashPattern([1.0, 1.0], 0);
+            pdf.setDrawColor(180, 180, 180);
+            pdf.setLineDashPattern([3, 3], 0);
             pdf.line(0, paperHeightMM - margin, paperWidthMM, paperHeightMM - margin);
 
             // Render horizontal paste guide inside the white block — clipped to gutter bounds
@@ -672,24 +694,33 @@ const handleSavePDF = async () => {
     }
   }
 
-  const handlePrintNow = async () => {
-    setIsExporting(true)
+  const handleNativePrintTrigger = async () => {
+    setIsPreparingPrint(true);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     try {
-      const pdf = await generateHighResPDF()
-      if (pdf) {
-        const pdfBase64 = pdf.output('datauristring')
-        if ((window as any).ipcRenderer && typeof (window as any).ipcRenderer.send === 'function') {
-          (window as any).ipcRenderer.send('trigger-print', pdfBase64)
+      // 1. Reuse our perfect jsPDF compilation matrix configuration
+      const doc = await generateHighResPDF(); 
+      if (doc) {
+        // 2. Extract data safely into a browser-native Base64 string stream (removing the URI header signature)
+        const dataUriString = doc.output('datauristring');
+        const base64String = dataUriString.split(',')[1]; // Strictly extracts only the raw base64 data array payload
+
+        // 3. Ship the payload straight to the main process cache pipeline
+        if ((window as any).electron?.ipcRenderer) {
+          (window as any).electron.ipcRenderer.send('spool-cached-pdf-print', base64String);
+        } else if ((window as any).ipcRenderer) {
+          (window as any).ipcRenderer.send('spool-cached-pdf-print', base64String);
         } else {
-          alert('System printing is only available inside the desktop application. Please use "Save as PDF" instead.')
+          console.error("IPC bridge unavailable in web browser context.");
         }
       }
-    } catch (err) {
-      console.error('Error triggering print:', err)
+    } catch (error) {
+      console.error("Frontend print cache generator failed:", error);
     } finally {
-      setIsExporting(false)
+      setIsPreparingPrint(false);
     }
-  }
+  };
 
   // Create page grid components
   const pageGridItems = []
@@ -739,6 +770,7 @@ const handleSavePDF = async () => {
         <div className="preview-modal-body">
           <div className="preview-matrix-scroll-container">
             <div 
+              id="print-flow-layout-capture-root"
               className="preview-matrix-grid"
               style={{
                 gridTemplateColumns: `repeat(${tilingCols}, auto)`
@@ -843,23 +875,23 @@ const handleSavePDF = async () => {
                 <button 
                   className="preview-action-btn secondary" 
                   onClick={handleSavePDF}
-                  disabled={isExporting || !uploadedImage}
+                  disabled={isExporting || isPreparingPrint || !uploadedImage}
                 >
                   {isExporting ? 'Exporting...' : 'Save as PDF'}
                 </button>
                 <button 
                   className="preview-action-btn primary" 
-                  onClick={handlePrintNow}
-                  disabled={isExporting || !uploadedImage}
+                  onClick={handleNativePrintTrigger}
+                  disabled={isExporting || isPreparingPrint || !uploadedImage}
                 >
-                  {isExporting ? 'Exporting...' : 'Print Now'}
+                  {isPreparingPrint ? 'Preparing...' : isExporting ? 'Exporting...' : 'Print Now'}
                 </button>
               </>
             ) : (
               <button 
                 className="preview-action-btn primary" 
                 onClick={handleSavePDF}
-                disabled={isExporting || !uploadedImage}
+                disabled={isExporting || isPreparingPrint || !uploadedImage}
               >
                 {isExporting ? 'Exporting...' : 'Save as PDF'}
               </button>
