@@ -45,3 +45,33 @@ a:hover {
 h1, h2, h3, h4, h5, h6 {
   margin: 0;
 }
+
+@media print {
+  /* 1. HIDE ALL STANDARD APP INTERFACES, SIDEBARS, MODALS, BUTTONS, AND WORKSPACE VIEWS COMPLETELY */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* 2. ISOLATE AND FORCE SHOW ONLY THE EXACT MUTLI-PAGE PRINT BUNDLE ROOT */
+  #print-flow-layout-capture-root,
+  #print-flow-layout-capture-root * {
+    visibility: visible !important;
+  }
+
+  /* 3. Pull the isolated printing element container to the absolute top-left (0,0) corner of the page execution canvas */
+  #print-flow-layout-capture-root {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 4. Enforce borderless sheet separation profiles */
+  @page {
+    size: auto;
+    margin: 0mm !important;
+  }
+}

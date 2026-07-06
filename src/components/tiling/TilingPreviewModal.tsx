@@ -695,31 +695,30 @@ const handleSavePDF = async () => {
   }
 
   const handleNativePrintTrigger = async () => {
-    // 1. Set loading or preparing state flag to force view engine rendering updates
+    // 1. Activate preparation loader
     setIsPreparingPrint(true);
 
-    // 2. CRITICAL SYNC FIX: Give the React DOM a solid 500ms baseline buffer 
-    // to safely compile, map, and output all 4 print pages into the tracking document hierarchy
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // 2. CRITICAL UI FIX: Wait for two full animation frames to guarantee 
+    // that the browser has fully populated and drawn the multi-page elements into the DOM tree
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    
+    // 3. Add an explicit safety timeout buffer to let the canvas decoding threads finish loading the high-res layout pieces
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
-    // 3. Robust Image Validation Loop: Ensure every single tile element is decoded in hardware memory
-    const printImages = document.querySelectorAll('.print-tile-image-node') as NodeListOf<HTMLImageElement>;
-    const decodePromises = Array.from(printImages).map(img => {
-      if (img.complete) return Promise.resolve();
-      return img.decode().catch(() => new Promise(res => { img.onload = res; }));
-    });
-    await Promise.all(decodePromises);
+    // 4. Force check if the print-ready container exists in the active DOM markup
+    const printContainer = document.getElementById('print-flow-layout-capture-root') || document.querySelector('.print-workspace-container');
+    if (!printContainer) {
+      console.warn("Print stream capture target not fully hydrated yet.");
+    }
 
-    // 4. One final browser layout execution tick to clear the queue
-    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 100)));
-
-    // 5. Fire the standard clean window print controller
+    // 5. Fire the native hardware print spool window
     try {
       window.print();
     } catch (error) {
-      console.error("Native window print execution failed:", error);
+      console.error("Native system print dispatch sequence failed:", error);
     } finally {
-      setIsPreparingPrint(false);
+      // Leave a small gap before closing the preparing state
+      setTimeout(() => setIsPreparingPrint(false), 300);
     }
   };
 

@@ -312,10 +312,10 @@
 }
 
 @media print {
-  /* Forcefully strip all operating system and browser default margins from the paper envelope */
+  /* 1. Force explicit real-world target paper dimensions (Letter size bounds) */
   @page {
-    size: auto;   /* Maintains the user-selected orientation/size */
-    margin: 0mm !important; /* Forces 0mm boundaries to ensure absolute layout precision */
+    size: 215.9mm 279.4mm !important; /* Forces physical boundary mapping */
+    margin: 0mm !important;
   }
 
   /* Clean up html/body viewport artifacts inside the print window context */
@@ -385,31 +385,38 @@
     gap: 0 !important;
   }
 
-  /* Ensure every single tile wrapper page behaves as an absolute solid block breaking cleanly */
+  /* 2. Lock down the structural layout size to eliminate vertical stretching */
   .print-page-tile-wrapper {
-    display: block !important;
-    width: 100% !important;
-    height: 100vh !important; /* Force to fill full page height in print */
+    width: 215.9mm !important;
+    height: 279.4mm !important;
+    max-width: 215.9mm !important;
+    max-height: 279.4mm !important;
     page-break-inside: avoid !important;
     page-break-after: always !important;
-    break-inside: avoid !important;
-    break-after: page !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
     box-shadow: none !important;
-    border: none !important;
+    -webkit-box-shadow: none !important;
+    filter: none !important;
+    border: none !important; /* Removes any extra container boundary line artifacts */
+    outline: none !important;
     background: #ffffff !important;
   }
 
-  .print-tile-image-node {
+  /* Also target any inner card panels that might be holding the shadow utilities */
+  .print-page-tile-wrapper * {
     box-shadow: none !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
+    -webkit-box-shadow: none !important;
+    filter: none !important;
+  }
+
+  /* 3. Enforce strict aspect-ratio tracking and anti-blur scaling algorithms on the images */
+  .print-tile-image-node {
     width: 100% !important;
     height: 100% !important;
-    display: block !important;
-    margin: 0 auto !important;
-    page-break-inside: avoid !important;
-    object-fit: contain !important;
+    object-fit: contain !important; /* Preserves 1:1 original image aspect ratio without distortion */
+    image-rendering: -webkit-optimize-contrast !important; /* Forces Chromium to use high-contrast rendering */
+    image-rendering: crisp-edges !important;
   }
 }
