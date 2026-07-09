@@ -246,7 +246,7 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
               <div className="input-with-buttons">
                 <button
                   disabled={tilingRows <= 1}
-                  onClick={() => setTilingRows(r => Math.max(1, typeof r === 'function' ? (r as any)(tilingRows) : r - 1))}
+                  onClick={() => setTilingRows(r => Math.max(1, r - 1))}
                   type="button"
                 >
                   -
@@ -255,13 +255,13 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
                   type="range"
                   id="tiling-rows"
                   min="1"
-                  max="10"
+                  max="20"
                   value={tilingRows}
                   onChange={(e) => setTilingRows(parseInt(e.target.value) || 1)}
                 />
                 <button
-                  disabled={tilingRows >= 10}
-                  onClick={() => setTilingRows(r => Math.min(10, typeof r === 'function' ? (r as any)(tilingRows) : r + 1))}
+                  disabled={tilingRows >= 20}
+                  onClick={() => setTilingRows(r => Math.min(20, r + 1))}
                   type="button"
                 >
                   +
@@ -277,7 +277,7 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
               <div className="input-with-buttons">
                 <button
                   disabled={tilingCols <= 1}
-                  onClick={() => setTilingCols(c => Math.max(1, typeof c === 'function' ? (c as any)(tilingCols) : c - 1))}
+                  onClick={() => setTilingCols(c => Math.max(1, c - 1))}
                   type="button"
                 >
                   -
@@ -286,13 +286,13 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
                   type="range"
                   id="tiling-cols"
                   min="1"
-                  max="10"
+                  max="20"
                   value={tilingCols}
                   onChange={(e) => setTilingCols(parseInt(e.target.value) || 1)}
                 />
                 <button
-                  disabled={tilingCols >= 10}
-                  onClick={() => setTilingCols(c => Math.min(10, typeof c === 'function' ? (c as any)(tilingCols) : c + 1))}
+                  disabled={tilingCols >= 20}
+                  onClick={() => setTilingCols(c => Math.min(20, c + 1))}
                   type="button"
                 >
                   +

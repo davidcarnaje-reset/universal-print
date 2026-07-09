@@ -65,8 +65,8 @@ export const TilingModule: React.FC<TilingModuleProps> = ({
       const prevTotalHeight = tilingRowsRef.current * prev.height
 
       // Estimate the new grid divisions (using Math.ceil to avoid clipping the source poster)
-      const newCols = Math.max(1, Math.ceil(prevTotalWidth / paperWidthMM))
-      const newRows = Math.max(1, Math.ceil(prevTotalHeight / paperHeightMM))
+      const newCols = Math.min(20, Math.max(1, Math.ceil(prevTotalWidth / paperWidthMM)))
+      const newRows = Math.min(20, Math.max(1, Math.ceil(prevTotalHeight / paperHeightMM)))
 
       setTilingCols(newCols)
       setTilingRows(newRows)

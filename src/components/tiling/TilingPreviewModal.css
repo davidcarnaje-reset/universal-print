@@ -312,9 +312,9 @@
 }
 
 @media print {
-  /* 1. Force explicit real-world target paper dimensions (Letter size bounds) */
+  /* 1. Force explicit real-world target paper dimensions */
   @page {
-    size: 215.9mm 279.4mm !important; /* Forces physical boundary mapping */
+    size: var(--print-paper-width, 215.9mm) var(--print-paper-height, 279.4mm) !important; /* Forces physical boundary mapping */
     margin: 0mm !important;
   }
 
@@ -387,10 +387,10 @@
 
   /* 2. Lock down the structural layout size to eliminate vertical stretching */
   .print-page-tile-wrapper {
-    width: 215.9mm !important;
-    height: 279.4mm !important;
-    max-width: 215.9mm !important;
-    max-height: 279.4mm !important;
+    width: var(--print-paper-width, 215.9mm) !important;
+    height: var(--print-paper-height, 279.4mm) !important;
+    max-width: var(--print-paper-width, 215.9mm) !important;
+    max-height: var(--print-paper-height, 279.4mm) !important;
     page-break-inside: avoid !important;
     page-break-after: always !important;
     position: relative !important;

@@ -242,13 +242,13 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
         ctx.clip();
 
         ctx.fillStyle = textColor;
-        const adaptiveFontV = Math.max(6 * P, Math.min(10 * P, bleedPx * 0.4));
+        const adaptiveFontV = Math.max(5 * P, Math.min(8 * P, bleedPx * 0.3));
         ctx.font = `bold ${adaptiveFontV}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // Strict mathematical center of ONLY the white gutter rectangle block
-        const gutterCenterX = cellW - (bleedPx / 2);
+        // Shift slightly to the right (away from dashed line at left)
+        const gutterCenterX = cellW - (bleedPx / 2) + (adaptiveFontV / 4);
         const gutterCenterY = cellH / 2;
         ctx.translate(gutterCenterX, gutterCenterY);
         ctx.rotate(Math.PI / 2);
@@ -283,12 +283,13 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
         ctx.clip();
 
         ctx.fillStyle = textColor;
-        const adaptiveFontH = Math.max(6 * P, Math.min(10 * P, bleedPx * 0.4));
+        const adaptiveFontH = Math.max(5 * P, Math.min(8 * P, bleedPx * 0.3));
         ctx.font = `bold ${adaptiveFontH}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        const gutterCenterYB = cellH - (bleedPx / 2);
+        // Shift slightly downwards (away from dashed line at top)
+        const gutterCenterYB = cellH - (bleedPx / 2) + (adaptiveFontH / 4);
         const labelH = bleedPx < 18 * P ? "PASTE HERE" : "--- PASTE HERE ---";
         ctx.fillText(labelH, cellW / 2, gutterCenterYB);
         ctx.restore();
@@ -399,7 +400,13 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
   // Reset zoom based on row/column count to fit screen initially
   useEffect(() => {
     const maxDimensionCount = Math.max(tilingCols, tilingRows)
-    if (maxDimensionCount >= 5) {
+    if (maxDimensionCount >= 15) {
+      setPreviewZoom(0.12)
+    } else if (maxDimensionCount >= 10) {
+      setPreviewZoom(0.18)
+    } else if (maxDimensionCount >= 7) {
+      setPreviewZoom(0.26)
+    } else if (maxDimensionCount >= 5) {
       setPreviewZoom(0.35)
     } else if (maxDimensionCount >= 3) {
       setPreviewZoom(0.5)
@@ -644,13 +651,20 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
             pdf.line(paperWidthMM - margin, 0, paperWidthMM - margin, paperHeightMM);
 
             // Render vertical paste guide — strict gutter center anchor lock
-            const pdfGutterCenterX = paperWidthMM - (margin / 2);
-            const pdfGutterCenterY = midY;
             const labelR = margin < 18 ? 'PASTE HERE' : '--- PASTE HERE ---';
-            pdf.text(labelR, pdfGutterCenterX, pdfGutterCenterY, {
-              angle: -90,
-              align: 'center',
-              baseline: 'middle'
+            // Calculate text dimensions manually to center text correctly without using buggy jsPDF align: 'center' with rotation
+            const textWidthMM = (pdf.getStringUnitWidth(labelR) * labelFontSize * 25.4) / 72;
+            const textHeightMM = (labelFontSize * 25.4) / 72;
+            
+            // Center the text horizontally in the gutter (from paperWidthMM - margin to paperWidthMM)
+            // Since angle: 90 draws text to the right of the baseline, we offset the baseline to the left by half the text height
+            const pdfGutterCenterX = paperWidthMM - (margin / 2) - (textHeightMM / 2);
+            
+            // Center the text vertically along the page height
+            const startY = midY - (textWidthMM / 2);
+
+            pdf.text(labelR, pdfGutterCenterX, startY, {
+              angle: 90
             });
           }
 
@@ -752,7 +766,30 @@ const handleSavePDF = async () => {
   }
 
   return (
-    <div className="preview-modal-overlay">
+    <div 
+      className="preview-modal-overlay"
+      style={{
+        ['--print-paper-width' as any]: `${paperWidthMM}mm`,
+        ['--print-paper-height' as any]: `${paperHeightMM}mm`
+      }}
+    >
+      {/* Dynamic style override for printing to match selected paper size */}
+      <style>
+        {`
+          @media print {
+            @page {
+              size: ${paperWidthMM}mm ${paperHeightMM}mm !important;
+              margin: 0mm !important;
+            }
+            .print-page-tile-wrapper {
+              width: ${paperWidthMM}mm !important;
+              height: ${paperHeightMM}mm !important;
+              max-width: ${paperWidthMM}mm !important;
+              max-height: ${paperHeightMM}mm !important;
+            }
+          }
+        `}
+      </style>
       <div className="preview-modal-container">
         
         {/* Modal Header */}
