@@ -259,7 +259,11 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
         ctx.translate(gutterCenterX, gutterCenterY);
         ctx.rotate(Math.PI / 2);
 
-        const labelV = bleedPx < 18 * P ? "PASTE HERE" : "--- PASTE HERE ---";
+        const currentPageNumber = (row * tilingCols) + col + 1;
+        const targetPage = currentPageNumber + 1;
+        const labelV = bleedPx < 18 * P 
+          ? `PASTE P${targetPage}` 
+          : `--- PASTE PAGE ${targetPage} HERE ---`;
         ctx.fillText(labelV, 0, 0);
         ctx.restore();
       }
@@ -298,7 +302,11 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
 
         // Shift slightly downwards (away from dashed line at top)
         const gutterCenterYB = cellH - (bleedPx / 2) + (adaptiveFontH / 4);
-        const labelH = bleedPx < 18 * P ? "PASTE HERE" : "--- PASTE HERE ---";
+        const currentPageNumber = (row * tilingCols) + col + 1;
+        const targetPage = currentPageNumber + tilingCols;
+        const labelH = bleedPx < 18 * P 
+          ? `PASTE P${targetPage}` 
+          : `--- PASTE PAGE ${targetPage} HERE ---`;
         ctx.fillText(labelH, cellW / 2, gutterCenterYB);
         ctx.restore();
       }
@@ -638,7 +646,11 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
               pageCtx.translate(gutterCenterX, gutterCenterY);
               pageCtx.rotate(Math.PI / 2);
 
-              const labelV = bleedPx < 18 * dpiScale ? "PASTE HERE" : "--- PASTE HERE ---";
+              const currentPageNumber = (r * tilingCols) + c + 1;
+              const targetPage = currentPageNumber + 1;
+              const labelV = bleedPx < 18 * dpiScale 
+                ? `PASTE P${targetPage}` 
+                : `--- PASTE PAGE ${targetPage} HERE ---`;
               pageCtx.fillText(labelV, 0, 0);
               pageCtx.restore();
             }
@@ -675,7 +687,11 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
               pageCtx.textBaseline = "middle";
 
               const gutterCenterYB = srcH - (bleedPx / 2) + (adaptiveFontH / 4);
-              const labelH = bleedPx < 18 * dpiScale ? "PASTE HERE" : "--- PASTE HERE ---";
+              const currentPageNumber = (r * tilingCols) + c + 1;
+              const targetPage = currentPageNumber + tilingCols;
+              const labelH = bleedPx < 18 * dpiScale 
+                ? `PASTE P${targetPage}` 
+                : `--- PASTE PAGE ${targetPage} HERE ---`;
               pageCtx.fillText(labelH, srcW / 2, gutterCenterYB);
               pageCtx.restore();
             }
