@@ -239,12 +239,23 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
             originY: 'center',
             selectable: true,
             hasRotatingPoint: true,
-            cornerColor: '#6366f1',
-            cornerStrokeColor: '#ffffff',
-            borderColor: '#6366f1',
-            transparentCorners: false,
-            cornerSize: 8
+            cornerStyle: 'circle',
+            cornerSize: 12, // Premium larger controls for easier handling
+            cornerColor: '#ffffff', // White circle fill
+            cornerStrokeColor: '#6366f1', // Indigo glow border
+            borderColor: '#6366f1', // Indigo line border
+            borderScaleFactor: 2, // Thicker premium border lines
+            transparentCorners: false
           } as any)
+
+          // Enhance the rotate control (mtr) with a grab cursor and custom offset
+          if (img.controls && img.controls.mtr) {
+            img.controls.mtr.cursorStyle = 'grab'
+            img.controls.mtr.offsetY = -35 // Move slightly higher to prevent overlap with standard top handles
+            
+            // Add a subtle styling for rotation hover cursor
+            img.controls.mtr.cursorStyleHandler = () => 'grab'
+          }
 
           img.setCoords()
           setupImageListeners(img)

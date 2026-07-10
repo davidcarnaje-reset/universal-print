@@ -47,7 +47,6 @@ interface PagePreviewCanvasProps {
   overlap: number
   showMargin: boolean
   showCutLines: boolean
-  showScissorMarks: boolean
   previewZoom: number
   tilingMode: 'bleed' | 'shrink'
   onRegisterPageImage?: (row: number, col: number, dataUrl: string) => void
@@ -68,7 +67,6 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
   overlap,
   showMargin,
   showCutLines,
-  showScissorMarks,
   previewZoom,
   tilingMode,
   onRegisterPageImage
@@ -230,15 +228,17 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
         ctx.fillRect(cellW - bleedPx, 0, bleedPx, cellH);
 
         // Draw ultra-thin dashed alignment separator
-        ctx.save();
-        ctx.strokeStyle = textColor;
-        ctx.lineWidth = 0.5 * P;
-        ctx.setLineDash([4 * P, 4 * P]);
-        ctx.beginPath();
-        ctx.moveTo(cellW - bleedPx, 0);
-        ctx.lineTo(cellW - bleedPx, cellH);
-        ctx.stroke();
-        ctx.restore();
+        if (showCutLines) {
+          ctx.save();
+          ctx.strokeStyle = textColor;
+          ctx.lineWidth = 0.5 * P;
+          ctx.setLineDash([4 * P, 4 * P]);
+          ctx.beginPath();
+          ctx.moveTo(cellW - bleedPx, 0);
+          ctx.lineTo(cellW - bleedPx, cellH);
+          ctx.stroke();
+          ctx.restore();
+        }
 
         // Render vertical text guide inside the gutter track — clipped to white gutter bounds
         ctx.save();
@@ -271,15 +271,17 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
         ctx.fillRect(0, cellH - bleedPx, cellW, bleedPx);
 
         // Draw ultra-thin dashed alignment separator
-        ctx.save();
-        ctx.strokeStyle = textColor;
-        ctx.lineWidth = 0.5 * P;
-        ctx.setLineDash([4 * P, 4 * P]);
-        ctx.beginPath();
-        ctx.moveTo(0, cellH - bleedPx);
-        ctx.lineTo(cellW, cellH - bleedPx);
-        ctx.stroke();
-        ctx.restore();
+        if (showCutLines) {
+          ctx.save();
+          ctx.strokeStyle = textColor;
+          ctx.lineWidth = 0.5 * P;
+          ctx.setLineDash([4 * P, 4 * P]);
+          ctx.beginPath();
+          ctx.moveTo(0, cellH - bleedPx);
+          ctx.lineTo(cellW, cellH - bleedPx);
+          ctx.stroke();
+          ctx.restore();
+        }
 
         // Render horizontal paste alignment tracker — clipped to white gutter bounds
         ctx.save();
@@ -323,7 +325,6 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
     overlap,
     showMargin,
     showCutLines,
-    showScissorMarks,
     pageW_MM,
     pageH_MM,
     P,
@@ -389,7 +390,6 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
   setTilingMode
 }) => {
   const [showCutLines, setShowCutLines] = useState<boolean>(true)
-  const [showScissorMarks, setShowScissorMarks] = useState<boolean>(true)
   const [previewZoom, setPreviewZoom] = useState<number>(0.5)
   const [isExporting, setIsExporting] = useState<boolean>(false)
   const [isPreparingPrint, setIsPreparingPrint] = useState<boolean>(false)
@@ -609,15 +609,17 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
               pageCtx.fillRect(srcW - bleedPx, 0, bleedPx, srcH);
 
               // Draw dashed alignment separator
-              pageCtx.save();
-              pageCtx.strokeStyle = textColor;
-              pageCtx.lineWidth = 0.5 * dpiScale;
-              pageCtx.setLineDash([4 * dpiScale, 4 * dpiScale]);
-              pageCtx.beginPath();
-              pageCtx.moveTo(srcW - bleedPx, 0);
-              pageCtx.lineTo(srcW - bleedPx, srcH);
-              pageCtx.stroke();
-              pageCtx.restore();
+              if (showCutLines) {
+                pageCtx.save();
+                pageCtx.strokeStyle = textColor;
+                pageCtx.lineWidth = 0.5 * dpiScale;
+                pageCtx.setLineDash([4 * dpiScale, 4 * dpiScale]);
+                pageCtx.beginPath();
+                pageCtx.moveTo(srcW - bleedPx, 0);
+                pageCtx.lineTo(srcW - bleedPx, srcH);
+                pageCtx.stroke();
+                pageCtx.restore();
+              }
 
               // Render vertical text guide
               pageCtx.save();
@@ -648,15 +650,17 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
               pageCtx.fillRect(0, srcH - bleedPx, srcW, bleedPx);
 
               // Draw dashed alignment separator
-              pageCtx.save();
-              pageCtx.strokeStyle = textColor;
-              pageCtx.lineWidth = 0.5 * dpiScale;
-              pageCtx.setLineDash([4 * dpiScale, 4 * dpiScale]);
-              pageCtx.beginPath();
-              pageCtx.moveTo(0, srcH - bleedPx);
-              pageCtx.lineTo(srcW, srcH - bleedPx);
-              pageCtx.stroke();
-              pageCtx.restore();
+              if (showCutLines) {
+                pageCtx.save();
+                pageCtx.strokeStyle = textColor;
+                pageCtx.lineWidth = 0.5 * dpiScale;
+                pageCtx.setLineDash([4 * dpiScale, 4 * dpiScale]);
+                pageCtx.beginPath();
+                pageCtx.moveTo(0, srcH - bleedPx);
+                pageCtx.lineTo(srcW, srcH - bleedPx);
+                pageCtx.stroke();
+                pageCtx.restore();
+              }
 
               // Render horizontal paste guide
               pageCtx.save();
@@ -764,7 +768,6 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
           overlap={overlap}
           showMargin={showMargin}
           showCutLines={showCutLines}
-          showScissorMarks={showScissorMarks}
           previewZoom={previewZoom}
           tilingMode={tilingMode}
         />
@@ -925,16 +928,6 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
                   onChange={(e) => setShowCutLines(e.target.checked)}
                 />
                 <span>Cut Lines</span>
-              </label>
-
-              <label className="toggle-label" style={{ opacity: showMargin ? 1 : 0.4 }}>
-                <input
-                  type="checkbox"
-                  checked={showScissorMarks}
-                  disabled={!showMargin}
-                  onChange={(e) => setShowScissorMarks(e.target.checked)}
-                />
-                <span>Scissor Marks</span>
               </label>
             </div>
           </div>
