@@ -68,10 +68,4 @@ h1, h2, h3, h4, h5, h6 {
     margin: 0 !important;
     padding: 0 !important;
   }
-
-  /* 4. Enforce borderless sheet separation profiles */
-  @page {
-    size: auto;
-    margin: 0mm !important;
-  }
 }

@@ -319,11 +319,13 @@
   }
 
   /* Clean up html/body viewport artifacts inside the print window context */
-  html, body {
+  html, body, #root {
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     background-color: #FFFFFF !important;
@@ -391,8 +393,12 @@
     height: var(--print-paper-height, 279.4mm) !important;
     max-width: var(--print-paper-width, 215.9mm) !important;
     max-height: var(--print-paper-height, 279.4mm) !important;
+    margin: 0 !important;
+    padding: 0 !important;
     page-break-inside: avoid !important;
     page-break-after: always !important;
+    break-inside: avoid !important;
+    break-after: page !important;
     position: relative !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
@@ -402,6 +408,11 @@
     border: none !important; /* Removes any extra container boundary line artifacts */
     outline: none !important;
     background: #ffffff !important;
+  }
+
+  .print-page-tile-wrapper:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
   /* Also target any inner card panels that might be holding the shadow utilities */

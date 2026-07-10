@@ -50,6 +50,7 @@ interface PagePreviewCanvasProps {
   showScissorMarks: boolean
   previewZoom: number
   tilingMode: 'bleed' | 'shrink'
+  onRegisterPageImage?: (row: number, col: number, dataUrl: string) => void
 }
 
 const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
@@ -69,7 +70,8 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
   showCutLines,
   showScissorMarks,
   previewZoom,
-  tilingMode
+  tilingMode,
+  onRegisterPageImage
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [imgSrc, setImgSrc] = useState<string>('')
@@ -185,9 +187,13 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
         if (angle !== 0) {
           const cx = left - col * cellW + col * bleedPx
           const cy = top - row * cellH + row * bleedPx
-          ctx.translate(cx, cy)
-          ctx.rotate((angle * Math.PI) / 180)
-          ctx.drawImage(imageElement, -expandedWidth / 2, -expandedHeight / 2, expandedWidth, expandedHeight)
+          const theta = (angle * Math.PI) / 180
+          const rotatedDrawLeft = cx - (expandedWidth / 2) * Math.cos(theta) + (expandedHeight / 2) * Math.sin(theta)
+          const rotatedDrawTop = cy - (expandedWidth / 2) * Math.sin(theta) - (expandedHeight / 2) * Math.cos(theta)
+
+          ctx.translate(rotatedDrawLeft, rotatedDrawTop)
+          ctx.rotate(theta)
+          ctx.drawImage(imageElement, 0, 0, expandedWidth, expandedHeight)
         } else {
           ctx.drawImage(imageElement, dx, dy, expandedWidth, expandedHeight)
         }
@@ -297,7 +303,11 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
 
       ctx.restore()
     }
-    setImgSrc(canvas.toDataURL('image/jpeg', 0.95))
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.95)
+    setImgSrc(dataUrl)
+    if (onRegisterPageImage) {
+      onRegisterPageImage(row, col, dataUrl)
+    }
   }, [
     row,
     col,
@@ -317,7 +327,8 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
     pageW_MM,
     pageH_MM,
     P,
-    tilingMode
+    tilingMode,
+    onRegisterPageImage
   ])
 
   return (
@@ -383,6 +394,9 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
   const [isExporting, setIsExporting] = useState<boolean>(false)
   const [isPreparingPrint, setIsPreparingPrint] = useState<boolean>(false)
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
+  const [printQuality, setPrintQuality] = useState<'high' | 'medium' | 'draft'>('medium')
+
+
 
   // Load image element once for drawing
   useEffect(() => {
@@ -418,7 +432,7 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
   if (!isOpen) return null
 
   // PDF Generator Engine at 300 DPI
-  const generateHighResPDF = async (): Promise<jsPDF | null> => {
+  const generateHighResPDF = async (): Promise<{ pdf: jsPDF, highResImages: string[] } | null> => {
     if (!uploadedImage) return null
 
     const pdf = new jsPDF({
@@ -458,42 +472,56 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
     const scaleFactor = 0.5;
     const imgScaledWidth = originalImageWidth * scaleX * scaleFactor;
     const imgScaledHeight = originalImageHeight * scaleY * scaleFactor;
-    const imgLeft = (left - (originalImageWidth * scaleX) / 2) * scaleFactor;
-    const imgTop = (top - (originalImageHeight * scaleY) / 2) * scaleFactor;
 
-    // 1. Pre-render the high-res layout canvas of the entire workspace if tilingMode === 'shrink'
-    let tempCanvas: HTMLCanvasElement | null = null;
-    const dpiScale = 300 / 25.4; // 300 DPI in px/mm
-
-    if (tilingMode === 'shrink') {
-      const canvasW = tilingCols * paperWidthMM * dpiScale;
-      const canvasH = tilingRows * paperHeightMM * dpiScale;
-
-      tempCanvas = document.createElement('canvas');
-      tempCanvas.width = canvasW;
-      tempCanvas.height = canvasH;
-      const tempCtx = tempCanvas.getContext('2d');
-      if (tempCtx) {
-        tempCtx.save();
-        // Clear temp canvas with white background (or transparent)
-        tempCtx.fillStyle = 'rgba(255, 255, 255, 0)';
-        tempCtx.fillRect(0, 0, canvasW, canvasH);
-
-        const leftPx = left * scaleFactor * dpiScale;
-        const topPx = top * scaleFactor * dpiScale;
-        const imgWPx = imgScaledWidth * dpiScale;
-        const imgHPx = imgScaledHeight * dpiScale;
-
-        if (angle !== 0) {
-          tempCtx.translate(leftPx, topPx);
-          tempCtx.rotate((angle * Math.PI) / 180);
-          tempCtx.drawImage(img, -imgWPx / 2, -imgHPx / 2, imgWPx, imgHPx);
-        } else {
-          tempCtx.drawImage(img, leftPx - imgWPx / 2, topPx - imgHPx / 2, imgWPx, imgHPx);
-        }
-        tempCtx.restore();
-      }
+    // Calculate DPI scale dynamically based on selected quality
+    let targetDPI = 300;
+    if (printQuality === 'medium') {
+      targetDPI = 150;
+    } else if (printQuality === 'draft') {
+      targetDPI = 96;
     }
+    const dpiScale = targetDPI / 25.4; // DPI in px/mm
+
+    // Always pre-render the full layout to tempCanvas
+    const canvasW = tilingCols * paperWidthMM * dpiScale;
+    const canvasH = tilingRows * paperHeightMM * dpiScale;
+
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvasW;
+    tempCanvas.height = canvasH;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (tempCtx) {
+      tempCtx.save();
+      // Clear temp canvas with transparent background
+      tempCtx.fillStyle = 'rgba(255, 255, 255, 0)';
+      tempCtx.fillRect(0, 0, canvasW, canvasH);
+
+      const leftPx = left * scaleFactor * dpiScale;
+      const topPx = top * scaleFactor * dpiScale;
+
+      let imgWPx, imgHPx;
+      if (tilingMode === 'shrink') {
+        imgWPx = imgScaledWidth * dpiScale;
+        imgHPx = imgScaledHeight * dpiScale;
+      } else {
+        const bleedMm = showMargin ? overlap : 0;
+        const expandedWidthMm = imgScaledWidth + (bleedMm * (tilingCols - 1));
+        const expandedHeightMm = imgScaledHeight + (bleedMm * (tilingRows - 1));
+        imgWPx = expandedWidthMm * dpiScale;
+        imgHPx = expandedHeightMm * dpiScale;
+      }
+
+      if (angle !== 0) {
+        tempCtx.translate(leftPx, topPx);
+        tempCtx.rotate((angle * Math.PI) / 180);
+        tempCtx.drawImage(img, -imgWPx / 2, -imgHPx / 2, imgWPx, imgHPx);
+      } else {
+        tempCtx.drawImage(img, leftPx - imgWPx / 2, topPx - imgHPx / 2, imgWPx, imgHPx);
+      }
+      tempCtx.restore();
+    }
+
+    const highResImages: string[] = [];
 
     for (let r = 0; r < tilingRows; r++) {
       for (let c = 0; c < tilingCols; c++) {
@@ -502,204 +530,182 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
         const margin = showMargin ? overlap : 0;
         const docAny = pdf as any;
 
-        if (tilingMode === 'shrink' && tempCanvas) {
-          const marginMm = showMargin ? overlap : 0;
+        // Force white page background in PDF before image
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(0, 0, paperWidthMM, paperHeightMM, 'F');
 
-          // STEP A: Source Window
-          const srcW = paperWidthMM * dpiScale;
-          const srcH = paperHeightMM * dpiScale;
-          const srcX = c * srcW;
-          const sy = r * srcH;
+        docAny.saveGraphicsState();
 
-          // STEP B: Destination Window
-          const destX = marginMm;
-          const destY = marginMm;
-          const destW = paperWidthMM - (marginMm * 2);
-          const destH = paperHeightMM - (marginMm * 2);
+        // Clip cleanly to the outer edge of this sheet page
+        docAny.rect(0, 0, paperWidthMM, paperHeightMM, null);
+        docAny.clip();
 
-          const pageCanvas = document.createElement('canvas');
-          pageCanvas.width = srcW;
-          pageCanvas.height = srcH;
-          const pageCtx = pageCanvas.getContext('2d');
-          if (pageCtx) {
-            // Force pure white background to eliminate black fill artifacts
-            pageCtx.fillStyle = '#ffffff';
-            pageCtx.fillRect(0, 0, srcW, srcH);
+        // Calculate Slicing Coordinates from tempCanvas
+        const srcW = paperWidthMM * dpiScale;
+        const srcH = paperHeightMM * dpiScale;
 
-            pageCtx.drawImage(tempCanvas, srcX, sy, srcW, srcH, 0, 0, srcW, srcH);
-            const sliceDataUrl = pageCanvas.toDataURL(imageFormat === 'PNG' ? 'image/png' : 'image/jpeg');
-
-            docAny.saveGraphicsState();
-
-            // Force white page background in PDF before image
-            pdf.setFillColor(255, 255, 255);
-            pdf.rect(0, 0, paperWidthMM, paperHeightMM, 'F');
-
-            // Clip cleanly to the outer edge of this sheet page
-            docAny.rect(0, 0, paperWidthMM, paperHeightMM, null);
-            docAny.clip();
-
-            const tileW = Math.round(destW);
-            const tileH = Math.round(destH);
-            docAny.addImage(
-              sliceDataUrl,
-              imageFormat,
-              destX,
-              destY,
-              tileW + 0.2,
-              tileH + 0.2,
-              undefined,
-              'FAST'
-            );
-            docAny.restoreGraphicsState();
-
-            // Draw dashed guide boundary rectangle showing the shrunk safe zone
-            if (marginMm > 0) {
-              pdf.saveGraphicsState();
-              pdf.setDrawColor(180, 180, 180);
-              pdf.setLineWidth(0.15);
-              pdf.setLineDashPattern([3, 3], 0);
-              pdf.rect(marginMm, marginMm, paperWidthMM - (marginMm * 2), paperHeightMM - (marginMm * 2), 'S');
-              pdf.restoreGraphicsState();
-            }
-          }
+        let srcX, sy;
+        if (tilingMode === 'shrink') {
+          srcX = c * srcW;
+          sy = r * srcH;
         } else {
-          // Bleed Mode
-          const bleedMm = margin;
-          const expandedWidth = imgScaledWidth + (bleedMm * (tilingCols - 1));
-          const expandedHeight = imgScaledHeight + (bleedMm * (tilingRows - 1));
-
-          const drawLeft = imgLeft - c * paperWidthMM + c * bleedMm;
-          const drawTop = imgTop - r * paperHeightMM + r * bleedMm;
-
-          docAny.saveGraphicsState();
-
-          // Clip cleanly to the outer edge of this sheet page
-          docAny.rect(0, 0, paperWidthMM, paperHeightMM, null);
-          docAny.clip();
-
-          if (angle !== 0) {
-            const cx = left * scaleFactor - c * paperWidthMM + c * bleedMm;
-            const cy = top * scaleFactor - r * paperHeightMM + r * bleedMm;
-            const theta = (angle * Math.PI) / 180;
-            const rotatedDrawLeft = cx - (expandedWidth / 2) * Math.cos(theta) + (expandedHeight / 2) * Math.sin(theta);
-            const rotatedDrawTop = cy - (expandedWidth / 2) * Math.sin(theta) - (expandedHeight / 2) * Math.cos(theta);
-
-            const tileW = Math.round(expandedWidth);
-            const tileH = Math.round(expandedHeight);
-            docAny.addImage(
-              img,
-              imageFormat,
-              rotatedDrawLeft,
-              rotatedDrawTop,
-              tileW + 0.2,
-              tileH + 0.2,
-              undefined,
-              'FAST',
-              angle
-            );
-          } else {
-            const tileW = Math.round(expandedWidth);
-            const tileH = Math.round(expandedHeight);
-            docAny.addImage(
-              img,
-              imageFormat,
-              drawLeft,
-              drawTop,
-              tileW + 0.2,
-              tileH + 0.2,
-              undefined,
-              'FAST'
-            );
-          }
-
-          docAny.restoreGraphicsState();
+          srcX = c * srcW - c * margin * dpiScale;
+          sy = r * srcH - r * margin * dpiScale;
         }
 
-        // Draw solid page border helper if showMargin is active (very clean light gray outline)
-        if (showMargin) {
-          pdf.saveGraphicsState();
-          pdf.setLineWidth(0.1);
-          pdf.setDrawColor(220, 220, 220);
-          pdf.rect(0, 0, paperWidthMM, paperHeightMM, 'S');
-          pdf.restoreGraphicsState();
+        // Calculate Slicing Destination Window on pageCanvas
+        let destX_canvas, destY_canvas, destW_canvas, destH_canvas;
+        if (tilingMode === 'shrink') {
+          destX_canvas = margin * dpiScale;
+          destY_canvas = margin * dpiScale;
+          destW_canvas = srcW - (margin * 2) * dpiScale;
+          destH_canvas = srcH - (margin * 2) * dpiScale;
+        } else {
+          destX_canvas = 0;
+          destY_canvas = 0;
+          destW_canvas = srcW;
+          destH_canvas = srcH;
         }
 
-        // Draw visual indicators on PDF borders (Solid Clean White Gutters, ultra-thin dashed separators, and grey text alignment instructions)
-        if (tilingMode === 'bleed' && showMargin && margin > 0) {
-          pdf.saveGraphicsState();
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = srcW;
+        pageCanvas.height = srcH;
+        const pageCtx = pageCanvas.getContext('2d');
+        if (pageCtx && tempCanvas) {
+          // Force pure white background in slice
+          pageCtx.fillStyle = '#ffffff';
+          pageCtx.fillRect(0, 0, srcW, srcH);
 
-          const midX = paperWidthMM / 2;
-          const midY = paperHeightMM / 2;
-          const textFillRGB = [107, 114, 128]; // crisp neutral dark gray #6B7280
-          pdf.setTextColor(textFillRGB[0], textFillRGB[1], textFillRGB[2]);
+          pageCtx.drawImage(tempCanvas, srcX, sy, srcW, srcH, destX_canvas, destY_canvas, destW_canvas, destH_canvas);
 
-          const labelFontSize = Math.max(4, Math.min(7.5, margin * 0.4));
-          pdf.setFontSize(labelFontSize);
-          pdf.setFont('helvetica', 'bold');
-
-          // A. Right Edge Gutter Indicator
-          if (c < tilingCols - 1) {
-            // Enforce 100% solid white block to hide bleeding artifact edges completely
-            pdf.setFillColor(255, 255, 255);
-            pdf.rect(paperWidthMM - margin, 0, margin, paperHeightMM, 'F');
-
-            // Draw ultra-thin dashed alignment separator
-            pdf.setLineWidth(0.15);
-            pdf.setDrawColor(180, 180, 180);
-            pdf.setLineDashPattern([3, 3], 0);
-            pdf.line(paperWidthMM - margin, 0, paperWidthMM - margin, paperHeightMM);
-
-            // Render vertical paste guide — strict gutter center anchor lock
-            const labelR = margin < 18 ? 'PASTE HERE' : '--- PASTE HERE ---';
-            // Calculate text dimensions manually to center text correctly without using buggy jsPDF align: 'center' with rotation
-            const textWidthMM = (pdf.getStringUnitWidth(labelR) * labelFontSize * 25.4) / 72;
-            const textHeightMM = (labelFontSize * 25.4) / 72;
-            
-            // Center the text horizontally in the gutter (from paperWidthMM - margin to paperWidthMM)
-            // Since angle: 90 draws text to the right of the baseline, we offset the baseline to the left by half the text height
-            const pdfGutterCenterX = paperWidthMM - (margin / 2) - (textHeightMM / 2);
-            
-            // Center the text vertically along the page height
-            const startY = midY - (textWidthMM / 2);
-
-            pdf.text(labelR, pdfGutterCenterX, startY, {
-              angle: 90
-            });
+          // Draw solid page border helper if showMargin is active (very clean light gray outline)
+          if (showMargin) {
+            pageCtx.strokeStyle = '#e2e8f0';
+            pageCtx.lineWidth = 0.5 * dpiScale;
+            pageCtx.strokeRect(0, 0, srcW, srcH);
           }
 
-          // B. Bottom Edge Gutter Indicator
-          if (r < tilingRows - 1) {
-            // Enforce 100% solid white block to hide bleeding artifact edges completely
-            pdf.setFillColor(255, 255, 255);
-            pdf.rect(0, paperHeightMM - margin, paperWidthMM, margin, 'F');
-
-            // Draw ultra-thin dashed alignment separator
-            pdf.setLineWidth(0.15);
-            pdf.setDrawColor(180, 180, 180);
-            pdf.setLineDashPattern([3, 3], 0);
-            pdf.line(0, paperHeightMM - margin, paperWidthMM, paperHeightMM - margin);
-
-            // Render horizontal paste guide inside the white block — clipped to gutter bounds
-            const labelB = margin < 18 ? 'PASTE HERE' : '--- PASTE HERE ---';
-            pdf.text(labelB, midX, paperHeightMM - margin / 2 + 0.8, {
-              align: 'center'
-            });
+          // Draw dashed guide boundary rectangle showing the shrunk safe zone (for shrink mode only)
+          if (tilingMode === 'shrink' && margin > 0) {
+            pageCtx.save();
+            pageCtx.strokeStyle = '#B4B4B4';
+            pageCtx.lineWidth = 0.5 * dpiScale;
+            pageCtx.setLineDash([3 * dpiScale, 3 * dpiScale]);
+            pageCtx.strokeRect(destX_canvas, destY_canvas, destW_canvas, destH_canvas);
+            pageCtx.restore();
           }
 
-          pdf.restoreGraphicsState();
+          // Draw visual indicators on borders (Solid Clean White Gutters, dashed lines, and paste guide texts)
+          if (tilingMode === 'bleed' && showMargin && margin > 0) {
+            const bleedPx = margin * dpiScale;
+            const textColor = '#6B7280';
+
+            pageCtx.save();
+
+            // A. Vertical Seam Rule (Right Side Gutter Indicator)
+            if (c < tilingCols - 1 && bleedPx > 0) {
+              // Enforce solid white block to hide bleeding edges completely
+              pageCtx.fillStyle = 'rgba(255, 255, 255, 1)';
+              pageCtx.fillRect(srcW - bleedPx, 0, bleedPx, srcH);
+
+              // Draw dashed alignment separator
+              pageCtx.save();
+              pageCtx.strokeStyle = textColor;
+              pageCtx.lineWidth = 0.5 * dpiScale;
+              pageCtx.setLineDash([4 * dpiScale, 4 * dpiScale]);
+              pageCtx.beginPath();
+              pageCtx.moveTo(srcW - bleedPx, 0);
+              pageCtx.lineTo(srcW - bleedPx, srcH);
+              pageCtx.stroke();
+              pageCtx.restore();
+
+              // Render vertical text guide
+              pageCtx.save();
+              pageCtx.beginPath();
+              pageCtx.rect(srcW - bleedPx, 0, bleedPx, srcH);
+              pageCtx.clip();
+
+              pageCtx.fillStyle = textColor;
+              const adaptiveFontV = Math.max(5 * dpiScale, Math.min(8 * dpiScale, bleedPx * 0.3));
+              pageCtx.font = `bold ${adaptiveFontV}px sans-serif`;
+              pageCtx.textAlign = "center";
+              pageCtx.textBaseline = "middle";
+
+              const gutterCenterX = srcW - (bleedPx / 2) + (adaptiveFontV / 4);
+              const gutterCenterY = srcH / 2;
+              pageCtx.translate(gutterCenterX, gutterCenterY);
+              pageCtx.rotate(Math.PI / 2);
+
+              const labelV = bleedPx < 18 * dpiScale ? "PASTE HERE" : "--- PASTE HERE ---";
+              pageCtx.fillText(labelV, 0, 0);
+              pageCtx.restore();
+            }
+
+            // B. Bottom Edge Gutter Indicator
+            if (r < tilingRows - 1 && bleedPx > 0) {
+              // Enforce solid white block to hide bleeding edges completely
+              pageCtx.fillStyle = 'rgba(255, 255, 255, 1)';
+              pageCtx.fillRect(0, srcH - bleedPx, srcW, bleedPx);
+
+              // Draw dashed alignment separator
+              pageCtx.save();
+              pageCtx.strokeStyle = textColor;
+              pageCtx.lineWidth = 0.5 * dpiScale;
+              pageCtx.setLineDash([4 * dpiScale, 4 * dpiScale]);
+              pageCtx.beginPath();
+              pageCtx.moveTo(0, srcH - bleedPx);
+              pageCtx.lineTo(srcW, srcH - bleedPx);
+              pageCtx.stroke();
+              pageCtx.restore();
+
+              // Render horizontal paste guide
+              pageCtx.save();
+              pageCtx.beginPath();
+              pageCtx.rect(0, srcH - bleedPx, srcW, bleedPx);
+              pageCtx.clip();
+
+              pageCtx.fillStyle = textColor;
+              const adaptiveFontH = Math.max(5 * dpiScale, Math.min(8 * dpiScale, bleedPx * 0.3));
+              pageCtx.font = `bold ${adaptiveFontH}px sans-serif`;
+              pageCtx.textAlign = "center";
+              pageCtx.textBaseline = "middle";
+
+              const gutterCenterYB = srcH - (bleedPx / 2) + (adaptiveFontH / 4);
+              const labelH = bleedPx < 18 * dpiScale ? "PASTE HERE" : "--- PASTE HERE ---";
+              pageCtx.fillText(labelH, srcW / 2, gutterCenterYB);
+              pageCtx.restore();
+            }
+
+            pageCtx.restore();
+          }
+
+          const sliceDataUrl = pageCanvas.toDataURL(imageFormat === 'PNG' ? 'image/png' : 'image/jpeg');
+          highResImages.push(sliceDataUrl);
+
+          docAny.addImage(
+            sliceDataUrl,
+            imageFormat,
+            0,
+            0,
+            paperWidthMM + 0.2,
+            paperHeightMM + 0.2,
+            undefined,
+            'FAST'
+          );
         }
+
+        docAny.restoreGraphicsState();
       }
     }
-    return pdf;
+    return { pdf, highResImages };
   };
 
-const handleSavePDF = async () => {
+  const handleSavePDF = async () => {
     setIsExporting(true)
     try {
-      const pdf = await generateHighResPDF()
-      if (pdf) {
-        pdf.save('print-layout.pdf')
+      const result = await generateHighResPDF()
+      if (result) {
+        result.pdf.save('print-layout.pdf')
       }
     } catch (err) {
       console.error('Error generating PDF:', err)
@@ -712,26 +718,27 @@ const handleSavePDF = async () => {
     // 1. Activate preparation loader
     setIsPreparingPrint(true);
 
-    // 2. CRITICAL UI FIX: Wait for two full animation frames to guarantee 
-    // that the browser has fully populated and drawn the multi-page elements into the DOM tree
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    
-    // 3. Add an explicit safety timeout buffer to let the canvas decoding threads finish loading the high-res layout pieces
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    // 4. Force check if the print-ready container exists in the active DOM markup
-    const printContainer = document.getElementById('print-flow-layout-capture-root') || document.querySelector('.print-workspace-container');
-    if (!printContainer) {
-      console.warn("Print stream capture target not fully hydrated yet.");
-    }
-
-    // 5. Fire the native hardware print spool window
     try {
-      window.print();
+      const result = await generateHighResPDF();
+      if (result && result.highResImages.length > 0) {
+        const ipc = (window as any).electron?.ipcRenderer || (window as any).ipcRenderer;
+        if (ipc && typeof ipc.send === 'function') {
+          ipc.send('print-image-sheets', {
+            images: result.highResImages,
+            paperWidthMM,
+            paperHeightMM,
+            landscape: orientation === 'landscape'
+          });
+        } else {
+          window.print();
+        }
+      } else {
+        console.warn("Failed to generate high-resolution print pages.");
+        window.print();
+      }
     } catch (error) {
       console.error("Native system print dispatch sequence failed:", error);
     } finally {
-      // Leave a small gap before closing the preparing state
       setTimeout(() => setIsPreparingPrint(false), 300);
     }
   };
@@ -786,6 +793,17 @@ const handleSavePDF = async () => {
               height: ${paperHeightMM}mm !important;
               max-width: ${paperWidthMM}mm !important;
               max-height: ${paperHeightMM}mm !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              box-sizing: border-box !important;
+              page-break-inside: avoid !important;
+              page-break-after: always !important;
+              break-inside: avoid !important;
+              break-after: page !important;
+            }
+            .print-page-tile-wrapper:last-child {
+              page-break-after: avoid !important;
+              break-after: avoid !important;
             }
           }
         `}
@@ -851,6 +869,22 @@ const handleSavePDF = async () => {
               >
                 <option value="bleed">Bleed Mode (Overlap)</option>
                 <option value="shrink">Shrink Mode (Fit to Page)</option>
+              </select>
+            </div>
+
+            {/* Print/Export Quality selector */}
+            <div className="footer-control-item footer-quality">
+              <label htmlFor="modal-print-quality">Quality</label>
+              <select
+                id="modal-print-quality"
+                value={printQuality}
+                onChange={(e) => setPrintQuality(e.target.value as 'high' | 'medium' | 'draft')}
+                className="form-select"
+                style={{ width: '130px' }}
+              >
+                <option value="high">High (300 DPI)</option>
+                <option value="medium">Medium (150 DPI)</option>
+                <option value="draft">Draft (96 DPI)</option>
               </select>
             </div>
 

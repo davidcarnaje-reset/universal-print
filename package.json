@@ -1,7 +1,7 @@
 {
   "name": "printflow",
   "productName": "PrintFlow",
-  "version": "1.3.0",
+  "version": "1.6.3",
   "description": "A professional high-performance utility for smart photo tiling and auto-centered ID package generation.",
   "author": "David Josh Carnaje",
   "private": true,

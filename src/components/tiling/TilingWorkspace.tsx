@@ -315,7 +315,7 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
             <div className="workspace-actions">
               {!isNativeApp && (
                 <a
-                  href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/1.3.0"
+                  href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/1.6.3"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="action-btn btn-pdf"
