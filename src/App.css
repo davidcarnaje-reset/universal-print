@@ -727,7 +727,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
     background: #ffffff !important;
     color: #000000 !important;
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     border: none !important;
@@ -758,9 +759,4 @@ input[type="range"]::-webkit-slider-thumb:hover {
     margin: 0 auto !important;
     page-break-inside: avoid;
   }
-}
-
-@page {
-  size: auto;
-  margin: 0mm;
 }
