@@ -216,7 +216,7 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
   if (!isOpen) return null
 
   // PDF High Res Compile Engine
-  const generateHighResPDF = async (): Promise<jsPDF | null> => {
+  const generateHighResPDF = async (): Promise<{ pdf: jsPDF, pageDataUrl: string } | null> => {
     if (!uploadedImage) return null
 
     const ratio300 = 11.811
@@ -297,15 +297,15 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
     const pageDataUrl = canvas.toDataURL('image/jpeg', 0.95)
     pdf.addImage(pageDataUrl, 'JPEG', 0, 0, paperWidthMM, paperHeightMM, undefined, 'FAST')
 
-    return pdf
+    return { pdf, pageDataUrl }
   }
 
   const handleSavePDF = async () => {
     setIsExporting(true)
     try {
-      const pdf = await generateHighResPDF()
-      if (pdf) {
-        pdf.save('id-photo-sheet.pdf')
+      const result = await generateHighResPDF()
+      if (result) {
+        result.pdf.save('id-photo-sheet.pdf')
       }
     } catch (err) {
       console.error('Error compiling ID PDF:', err)
@@ -317,14 +317,16 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
   const handlePrintNow = async () => {
     setIsExporting(true)
     try {
-      const pdf = await generateHighResPDF()
-      if (pdf) {
-        const dataUriString = pdf.output('datauristring')
-        const base64String = dataUriString.split(',')[1]
-
+      const result = await generateHighResPDF()
+      if (result) {
         const ipc = (window as any).electron?.ipcRenderer || (window as any).ipcRenderer
         if (ipc && typeof ipc.send === 'function') {
-          ipc.send('spool-cached-pdf-print', base64String)
+          ipc.send('print-image-sheets', {
+            images: [result.pageDataUrl],
+            paperWidthMM,
+            paperHeightMM,
+            landscape: orientation === 'landscape'
+          })
         } else {
           alert('System printing is only available inside the desktop application. Please use "Save as PDF" instead.')
         }

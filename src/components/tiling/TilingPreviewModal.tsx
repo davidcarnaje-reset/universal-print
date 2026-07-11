@@ -47,6 +47,7 @@ interface PagePreviewCanvasProps {
   overlap: number
   showMargin: boolean
   showCutLines: boolean
+  showPageNumbers?: boolean
   previewZoom: number
   tilingMode: 'bleed' | 'shrink'
   onRegisterPageImage?: (row: number, col: number, dataUrl: string) => void
@@ -67,6 +68,7 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
   overlap,
   showMargin,
   showCutLines,
+  showPageNumbers = true,
   previewZoom,
   tilingMode,
   onRegisterPageImage
@@ -157,7 +159,7 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
         ctx.restore()
 
         // Draw dashed guide boundary rectangle showing the shrunk safe zone
-        if (showMargin && marginPx > 0) {
+        if (showMargin && showCutLines && marginPx > 0) {
           ctx.save()
           ctx.strokeStyle = '#9CA3AF'
           ctx.lineWidth = 0.5 * P
@@ -213,7 +215,7 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
     ctx.strokeRect(0, 0, pageW_MM * P, pageH_MM * P)
 
     // --- STEP C: BRING BACK THE BEAUTIFUL UI (Shaded Overlap Guides & Dash Lines) ---
-    if (tilingMode === 'bleed' && showMargin && overlap > 0) {
+    if ((tilingMode === 'bleed' || tilingMode === 'shrink') && showMargin && overlap > 0) {
       const bleedPx = overlap * P
       const cellW = paperWidthMM * P
       const cellH = paperHeightMM * P
@@ -222,13 +224,13 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
       ctx.save()
 
       // A. Vertical Seam Rule (Right Side Gutter Indicator)
-      if (col < tilingCols - 1 && bleedPx > 0) {
+      if ((tilingMode === 'shrink' || col < tilingCols - 1) && bleedPx > 0) {
         // Enforce solid white block to hide bleeding edges completely
         ctx.fillStyle = 'rgba(255, 255, 255, 1)';
         ctx.fillRect(cellW - bleedPx, 0, bleedPx, cellH);
 
         // Draw ultra-thin dashed alignment separator
-        if (showCutLines) {
+        if (tilingMode === 'bleed' && showCutLines) {
           ctx.save();
           ctx.strokeStyle = textColor;
           ctx.lineWidth = 0.5 * P;
@@ -260,22 +262,21 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
         ctx.rotate(Math.PI / 2);
 
         const currentPageNumber = (row * tilingCols) + col + 1;
-        const targetPage = currentPageNumber + 1;
         const labelV = bleedPx < 18 * P 
-          ? `PASTE P${targetPage}` 
-          : `--- PASTE PAGE ${targetPage} HERE ---`;
+          ? (showPageNumbers ? `P.${currentPageNumber} Paste Here` : `Paste Here`) 
+          : (showPageNumbers ? `--- P.${currentPageNumber} PASTE HERE ---` : `--- PASTE HERE ---`);
         ctx.fillText(labelV, 0, 0);
         ctx.restore();
       }
 
       // B. Bottom Edge Gutter Indicator
-      if (row < tilingRows - 1 && bleedPx > 0) {
+      if ((tilingMode === 'shrink' || row < tilingRows - 1) && bleedPx > 0) {
         // Enforce solid white block to hide bleeding edges completely
         ctx.fillStyle = 'rgba(255, 255, 255, 1)';
         ctx.fillRect(0, cellH - bleedPx, cellW, bleedPx);
 
         // Draw ultra-thin dashed alignment separator
-        if (showCutLines) {
+        if (tilingMode === 'bleed' && showCutLines) {
           ctx.save();
           ctx.strokeStyle = textColor;
           ctx.lineWidth = 0.5 * P;
@@ -303,10 +304,9 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
         // Shift slightly downwards (away from dashed line at top)
         const gutterCenterYB = cellH - (bleedPx / 2) + (adaptiveFontH / 4);
         const currentPageNumber = (row * tilingCols) + col + 1;
-        const targetPage = currentPageNumber + tilingCols;
         const labelH = bleedPx < 18 * P 
-          ? `PASTE P${targetPage}` 
-          : `--- PASTE PAGE ${targetPage} HERE ---`;
+          ? (showPageNumbers ? `P.${currentPageNumber} Paste Here` : `Paste Here`) 
+          : (showPageNumbers ? `--- P.${currentPageNumber} PASTE HERE ---` : `--- PASTE HERE ---`);
         ctx.fillText(labelH, cellW / 2, gutterCenterYB);
         ctx.restore();
       }
@@ -333,6 +333,7 @@ const PagePreviewCanvas: React.FC<PagePreviewCanvasProps> = ({
     overlap,
     showMargin,
     showCutLines,
+    showPageNumbers,
     pageW_MM,
     pageH_MM,
     P,
@@ -398,6 +399,7 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
   setTilingMode
 }) => {
   const [showCutLines, setShowCutLines] = useState<boolean>(true)
+  const [showPageNumbers, setShowPageNumbers] = useState<boolean>(true)
   const [previewZoom, setPreviewZoom] = useState<number>(0.5)
   const [isExporting, setIsExporting] = useState<boolean>(false)
   const [isPreparingPrint, setIsPreparingPrint] = useState<boolean>(false)
@@ -533,7 +535,7 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
 
     for (let r = 0; r < tilingRows; r++) {
       for (let c = 0; c < tilingCols; c++) {
-        if (r > 0 || c > 0) pdf.addPage();
+        if (r > 0 || c > 0) pdf.addPage([paperWidthMM, paperHeightMM], orientation);
 
         const margin = showMargin ? overlap : 0;
         const docAny = pdf as any;
@@ -594,7 +596,7 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
           }
 
           // Draw dashed guide boundary rectangle showing the shrunk safe zone (for shrink mode only)
-          if (tilingMode === 'shrink' && margin > 0) {
+          if (tilingMode === 'shrink' && showCutLines && margin > 0) {
             pageCtx.save();
             pageCtx.strokeStyle = '#B4B4B4';
             pageCtx.lineWidth = 0.5 * dpiScale;
@@ -604,20 +606,20 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
           }
 
           // Draw visual indicators on borders (Solid Clean White Gutters, dashed lines, and paste guide texts)
-          if (tilingMode === 'bleed' && showMargin && margin > 0) {
+          if ((tilingMode === 'bleed' || tilingMode === 'shrink') && showMargin && margin > 0) {
             const bleedPx = margin * dpiScale;
             const textColor = '#6B7280';
 
             pageCtx.save();
 
             // A. Vertical Seam Rule (Right Side Gutter Indicator)
-            if (c < tilingCols - 1 && bleedPx > 0) {
+            if ((tilingMode === 'shrink' || c < tilingCols - 1) && bleedPx > 0) {
               // Enforce solid white block to hide bleeding edges completely
               pageCtx.fillStyle = 'rgba(255, 255, 255, 1)';
               pageCtx.fillRect(srcW - bleedPx, 0, bleedPx, srcH);
 
               // Draw dashed alignment separator
-              if (showCutLines) {
+              if (tilingMode === 'bleed' && showCutLines) {
                 pageCtx.save();
                 pageCtx.strokeStyle = textColor;
                 pageCtx.lineWidth = 0.5 * dpiScale;
@@ -647,22 +649,21 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
               pageCtx.rotate(Math.PI / 2);
 
               const currentPageNumber = (r * tilingCols) + c + 1;
-              const targetPage = currentPageNumber + 1;
               const labelV = bleedPx < 18 * dpiScale 
-                ? `PASTE P${targetPage}` 
-                : `--- PASTE PAGE ${targetPage} HERE ---`;
+                ? (showPageNumbers ? `P.${currentPageNumber} Paste Here` : `Paste Here`) 
+                : (showPageNumbers ? `--- P.${currentPageNumber} PASTE HERE ---` : `--- PASTE HERE ---`);
               pageCtx.fillText(labelV, 0, 0);
               pageCtx.restore();
             }
 
             // B. Bottom Edge Gutter Indicator
-            if (r < tilingRows - 1 && bleedPx > 0) {
+            if ((tilingMode === 'shrink' || r < tilingRows - 1) && bleedPx > 0) {
               // Enforce solid white block to hide bleeding edges completely
               pageCtx.fillStyle = 'rgba(255, 255, 255, 1)';
               pageCtx.fillRect(0, srcH - bleedPx, srcW, bleedPx);
 
               // Draw dashed alignment separator
-              if (showCutLines) {
+              if (tilingMode === 'bleed' && showCutLines) {
                 pageCtx.save();
                 pageCtx.strokeStyle = textColor;
                 pageCtx.lineWidth = 0.5 * dpiScale;
@@ -688,10 +689,9 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
 
               const gutterCenterYB = srcH - (bleedPx / 2) + (adaptiveFontH / 4);
               const currentPageNumber = (r * tilingCols) + c + 1;
-              const targetPage = currentPageNumber + tilingCols;
               const labelH = bleedPx < 18 * dpiScale 
-                ? `PASTE P${targetPage}` 
-                : `--- PASTE PAGE ${targetPage} HERE ---`;
+                ? (showPageNumbers ? `P.${currentPageNumber} Paste Here` : `Paste Here`) 
+                : (showPageNumbers ? `--- P.${currentPageNumber} PASTE HERE ---` : `--- PASTE HERE ---`);
               pageCtx.fillText(labelH, srcW / 2, gutterCenterYB);
               pageCtx.restore();
             }
@@ -784,6 +784,7 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
           overlap={overlap}
           showMargin={showMargin}
           showCutLines={showCutLines}
+          showPageNumbers={showPageNumbers}
           previewZoom={previewZoom}
           tilingMode={tilingMode}
         />
@@ -944,6 +945,16 @@ export const TilingPreviewModal: React.FC<TilingPreviewModalProps> = ({
                   onChange={(e) => setShowCutLines(e.target.checked)}
                 />
                 <span>Cut Lines</span>
+              </label>
+
+              <label className="toggle-label" style={{ opacity: showMargin ? 1 : 0.4 }}>
+                <input
+                  type="checkbox"
+                  checked={showPageNumbers}
+                  disabled={!showMargin}
+                  onChange={(e) => setShowPageNumbers(e.target.checked)}
+                />
+                <span>Page Numbers</span>
               </label>
             </div>
           </div>

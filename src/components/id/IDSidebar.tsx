@@ -84,7 +84,7 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
           <span className="logo-icon">📐</span>
           <h1 className="logo-text">PrintFlow</h1>
         </div>
-        <span className="badge">v1.6.3</span>
+        <span className="badge">v1.6.9</span>
       </header>
 
       {/* Tab Switcher */}
@@ -106,7 +106,7 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
       <div className="sidebar-scrollable">
         {!isNativeApp && (
           <a
-            href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/1.6.3"
+            href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/1.6.9"
             target="_blank"
             rel="noopener noreferrer"
             className="download-desktop-card"
