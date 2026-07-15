@@ -25,6 +25,8 @@ interface TilingSidebarProps {
   setTilingCols: (cols: number | ((prev: number) => number)) => void
   tilingMode: 'bleed' | 'shrink'
   setTilingMode: (mode: 'bleed' | 'shrink') => void
+  isSidebarOpen: boolean
+  onCloseSidebar: () => void
 }
 
 export const TilingSidebar: React.FC<TilingSidebarProps> = ({
@@ -46,7 +48,9 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
   tilingCols,
   setTilingCols,
   tilingMode,
-  setTilingMode
+  setTilingMode,
+  isSidebarOpen,
+  onCloseSidebar
 }) => {
 
   // File dropzone trigger
@@ -77,30 +81,39 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
   })
 
   return (
-    <aside className="sidebar">
-      <header className="sidebar-header">
-        <div className="logo-container">
-          <span className="logo-icon">📐</span>
-          <h1 className="logo-text">PrintFlow</h1>
-        </div>
-        <span className="badge">v2.0.0</span>
-      </header>
+    <>
+      {isSidebarOpen && (
+        <div className="sidebar-overlay" onClick={onCloseSidebar} />
+      )}
+      <aside className={`sidebar ${isSidebarOpen ? 'mobile-open' : ''}`}>
+        <header className="sidebar-header">
+          <div className="logo-container">
+            <span className="logo-icon">📐</span>
+            <h1 className="logo-text">PrintFlow</h1>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className="badge">v2.0.0</span>
+            <button className="mobile-close-btn" onClick={onCloseSidebar} aria-label="Close Sidebar">
+              ✕
+            </button>
+          </div>
+        </header>
 
-      {/* Tab Switcher */}
-      <div className="tab-switcher">
-        <button
-          className={`tab-btn ${activeTab === 'tiling' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tiling')}
-        >
-          Tiling Mode
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'id-picture' ? 'active' : ''}`}
-          onClick={() => setActiveTab('id-picture')}
-        >
-          ID Picture
-        </button>
-      </div>
+        {/* Tab Switcher */}
+        <div className="tab-switcher">
+          <button
+            className={`tab-btn ${activeTab === 'tiling' ? 'active' : ''}`}
+            onClick={() => setActiveTab('tiling')}
+          >
+            Tiling Mode
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'id-picture' ? 'active' : ''}`}
+            onClick={() => setActiveTab('id-picture')}
+          >
+            ID Picture
+          </button>
+        </div>
 
       <div className="sidebar-scrollable">
         {!isNativeApp && (
@@ -306,5 +319,6 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
         <span>✏️ Created by DJC</span>
       </div>
     </aside>
+    </>
   )
 }

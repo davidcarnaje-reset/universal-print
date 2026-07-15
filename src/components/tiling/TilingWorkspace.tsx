@@ -21,6 +21,7 @@ interface TilingWorkspaceProps {
   setShowMargin: (val: boolean) => void
   tilingMode: 'bleed' | 'shrink'
   setTilingMode: (mode: 'bleed' | 'shrink') => void
+  toggleSidebar: () => void
 }
 
 export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
@@ -39,7 +40,8 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
   showMargin,
   setShowMargin,
   tilingMode,
-  setTilingMode
+  setTilingMode,
+  toggleSidebar
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const fabricCanvasRef = useRef<Canvas | null>(null)
@@ -304,6 +306,9 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
   return (
     <main className="workspace">
       <header className="workspace-header">
+        <button className="mobile-menu-btn" onClick={toggleSidebar} aria-label="Toggle Sidebar">
+          ☰
+        </button>
         <div className="workspace-title-area">
           <h2>Layout Canvas (Tiling Mode)</h2>
           <p className="workspace-subtitle">
