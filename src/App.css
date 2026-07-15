@@ -1,34 +1,39 @@
+/* ============================================================
+   SKETCHY THEME — App Layout & Component Styles
+   ============================================================ */
+
 /* Main Layout Containers */
 .app-container {
   display: flex;
   width: 100vw;
   height: 100vh;
-  background-color: #0f111a;
-  color: #e2e8f0;
+  background-color: var(--sk-bg-deep);
+  color: var(--sk-text-primary);
   overflow: hidden;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: 'Comic Neue', 'Patrick Hand', cursive, system-ui, sans-serif;
 }
 
-/* Sidebar Styling */
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
 .sidebar {
   width: 360px;
   min-width: 360px;
-  background-color: #151824;
-  border-right: 1px solid #23273a;
+  background-color: var(--sk-bg-main);
+  border-right: 2px dashed var(--sk-border);
   display: flex;
   flex-direction: column;
   height: 100%;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
   z-index: 10;
 }
 
 .sidebar-header {
   padding: 1.5rem;
-  border-bottom: 1px solid #23273a;
+  border-bottom: 2px dashed var(--sk-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #1a1e2f;
+  background-color: var(--sk-bg-card);
 }
 
 .logo-container {
@@ -39,63 +44,70 @@
 
 .logo-icon {
   font-size: 1.75rem;
-  filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.4));
+  filter: drop-shadow(0 0 6px var(--sk-accent-glow));
 }
 
 .logo-text {
-  font-size: 1.25rem;
+  font-size: 1.4rem;
   font-weight: 700;
   margin: 0;
-  background: linear-gradient(135deg, #a5b4fc, #6366f1);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: 0.5px;
+  font-family: 'Architects Daughter', cursive;
+  color: var(--sk-accent-warm);
+  letter-spacing: 1px;
 }
 
 .badge {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.25rem 0.5rem;
-  background-color: rgba(99, 102, 241, 0.15);
-  color: #818cf8;
-  border-radius: 9999px;
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-family: 'Patrick Hand', cursive;
+  padding: 0.2rem 0.55rem;
+  background-color: var(--sk-accent-glow);
+  color: var(--sk-accent);
+  border-radius: var(--sk-radius-wobbly-btn);
+  border: 2px dashed var(--sk-accent);
 }
 
-/* Tab Switcher Styling */
+/* ============================================================
+   TAB SWITCHER
+   ============================================================ */
 .tab-switcher {
   display: flex;
-  background-color: #111420;
+  background-color: var(--sk-bg-input);
   padding: 0.35rem;
   margin: 1.25rem 1.5rem 0.5rem 1.5rem;
-  border-radius: 10px;
-  border: 1px solid #1f2339;
+  border-radius: var(--sk-radius-wobbly-sm);
+  border: 2px dashed var(--sk-border);
 }
 
 .tab-btn {
   flex: 1;
   background: transparent;
   border: none;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #94a3b8;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: 'Patrick Hand', cursive;
+  color: var(--sk-text-muted);
   cursor: pointer;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  border-radius: var(--sk-radius-wobbly-btn);
+  transition: all 0.25s ease;
 }
 
 .tab-btn:hover {
-  color: #cbd5e1;
+  color: var(--sk-text-primary);
+  background-color: rgba(59, 179, 164, 0.08);
 }
 
 .tab-btn.active {
-  background-color: #6366f1;
+  background-color: var(--sk-accent);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  border: 2px solid var(--sk-accent-hover);
+  box-shadow: 0 3px 10px var(--sk-accent-glow);
 }
 
+/* ============================================================
+   SIDEBAR SCROLLABLE
+   ============================================================ */
 .sidebar-scrollable {
   flex: 1;
   overflow-y: auto;
@@ -107,17 +119,17 @@
 
 /* Scrollbar Customization */
 .sidebar-scrollable::-webkit-scrollbar {
-  width: 6px;
+  width: 7px;
 }
 .sidebar-scrollable::-webkit-scrollbar-track {
   background: transparent;
 }
 .sidebar-scrollable::-webkit-scrollbar-thumb {
-  background: #23273a;
-  border-radius: 3px;
+  background: var(--sk-border);
+  border-radius: 30px;
 }
 .sidebar-scrollable::-webkit-scrollbar-thumb:hover {
-  background: #2e344e;
+  background: var(--sk-border-hover);
 }
 
 .sidebar-section {
@@ -126,58 +138,77 @@
   gap: 0.75rem;
 }
 
-.section-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #94a3b8;
-  margin: 0;
+.sidebar-footer {
+  padding: 0.85rem 1.5rem;
+  border-top: 2px dashed var(--sk-border);
+  text-align: center;
+  font-family: 'Architects Daughter', cursive;
+  font-size: 0.85rem;
+  color: var(--sk-text-muted);
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
 }
 
-/* Card Styling */
+.section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--sk-accent-warm);
+  margin: 0;
+  font-family: 'Patrick Hand', cursive;
+}
+
+/* ============================================================
+   CARD STYLING
+   ============================================================ */
 .card {
-  background-color: #1a1e2f;
-  border: 1px solid #23273a;
-  border-radius: 12px;
+  background-color: var(--sk-bg-card);
+  border: 2px dashed var(--sk-border);
+  border-radius: var(--sk-radius-wobbly);
   padding: 1.25rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s ease;
 }
 
 .card:hover {
-  border-color: #2e344e;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  border-color: var(--sk-border-hover);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
 }
 
-/* Select Input Styling */
+/* ============================================================
+   SELECT INPUT
+   ============================================================ */
 .form-select {
   width: 100%;
   padding: 0.6rem 0.85rem;
-  background-color: #121520;
-  border: 1px solid #2d3250;
-  border-radius: 8px;
-  color: #f1f5f9;
-  font-size: 0.875rem;
-  font-family: inherit;
+  background-color: var(--sk-bg-input);
+  border: 2px dashed var(--sk-border);
+  border-radius: var(--sk-radius-wobbly-sm);
+  color: var(--sk-text-primary);
+  font-size: 0.95rem;
+  font-family: 'Comic Neue', cursive;
+  font-weight: 700;
   outline: none;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .form-select:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+  border-color: var(--sk-accent);
+  box-shadow: 0 0 0 3px var(--sk-accent-glow);
 }
 
-/* Dropzone Styling */
+/* ============================================================
+   DROPZONE
+   ============================================================ */
 .dropzone {
-  border: 2px dashed #313753;
-  border-radius: 12px;
+  border: 3px dashed var(--sk-border);
+  border-radius: var(--sk-radius-wobbly);
   padding: 2rem 1.5rem;
   text-align: center;
   cursor: pointer;
-  background-color: #121520;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: var(--sk-bg-input);
+  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -185,20 +216,20 @@
 }
 
 .dropzone:hover, .dropzone.active {
-  border-color: #6366f1;
-  background-color: #171b2e;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
+  border-color: var(--sk-accent);
+  background-color: rgba(59, 179, 164, 0.06);
+  transform: translateY(-2px) rotate(-0.5deg);
+  box-shadow: 0 6px 20px var(--sk-accent-glow);
 }
 
 .dropzone.has-image {
-  border-color: #10b981;
-  background-color: #0f1c24;
+  border-color: var(--sk-success);
+  background-color: rgba(92, 184, 122, 0.06);
 }
 
 .dropzone.has-image:hover {
-  border-color: #34d399;
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.1);
+  border-color: var(--sk-success);
+  box-shadow: 0 6px 20px rgba(92, 184, 122, 0.15);
 }
 
 .dropzone-content {
@@ -214,29 +245,34 @@
 }
 
 .dropzone:hover .dropzone-icon {
-  transform: translateY(-4px);
+  transform: translateY(-4px) rotate(5deg);
 }
 
 .dropzone-text {
-  font-size: 0.95rem;
+  font-size: 1rem;
   margin: 0;
-  color: #cbd5e1;
-  font-weight: 500;
+  color: var(--sk-text-primary);
+  font-weight: 700;
+  font-family: 'Patrick Hand', cursive;
 }
 
 .dropzone-text .highlight {
-  color: #818cf8;
+  color: var(--sk-accent);
   text-decoration: underline;
+  text-decoration-style: wavy;
   cursor: pointer;
 }
 
 .dropzone-subtext {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   margin: 0;
-  color: #64748b;
+  color: var(--sk-text-muted);
+  font-family: 'Comic Neue', cursive;
 }
 
-/* Image Queue Styling */
+/* ============================================================
+   IMAGE QUEUE
+   ============================================================ */
 .image-queue {
   display: flex;
   flex-direction: column;
@@ -249,21 +285,22 @@
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
-  background-color: #121520;
-  border-style: dotted;
-  border-color: #23273a;
+  background-color: var(--sk-bg-input);
+  border: 2px dashed var(--sk-border);
+  border-radius: var(--sk-radius-wobbly-sm);
   gap: 0.5rem;
 }
 
 .empty-icon {
   font-size: 1.5rem;
-  color: #475569;
+  color: var(--sk-text-muted);
 }
 
 .empty-text {
-  font-size: 0.875rem;
-  color: #64748b;
+  font-size: 0.95rem;
+  color: var(--sk-text-muted);
   margin: 0;
+  font-family: 'Patrick Hand', cursive;
 }
 
 .queue-item {
@@ -271,8 +308,9 @@
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1rem;
-  background-color: #1e233b;
-  border: 1px solid #2e3454;
+  background-color: var(--sk-bg-card);
+  border: 2px dashed var(--sk-border);
+  border-radius: var(--sk-radius-wobbly-sm);
   position: relative;
   overflow: hidden;
 }
@@ -284,16 +322,17 @@
   top: 0;
   bottom: 0;
   width: 4px;
-  background-color: #6366f1;
+  background-color: var(--sk-accent);
+  border-radius: 0 4px 4px 0;
 }
 
 .thumbnail-wrapper {
   width: 50px;
   height: 50px;
-  border-radius: 6px;
+  border-radius: var(--sk-radius-wobbly-btn);
   overflow: hidden;
-  border: 1px solid #2d3250;
-  background-color: #0d0f17;
+  border: 2px dashed var(--sk-border);
+  background-color: var(--sk-bg-deep);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -315,20 +354,24 @@
 }
 
 .queue-item-name {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #f1f5f9;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--sk-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-family: 'Patrick Hand', cursive;
 }
 
 .queue-item-size {
-  font-size: 0.75rem;
-  color: #94a3b8;
+  font-size: 0.8rem;
+  color: var(--sk-text-secondary);
+  font-family: 'Comic Neue', cursive;
 }
 
-/* Control Fields Styling */
+/* ============================================================
+   CONTROL FIELDS
+   ============================================================ */
 .control-group {
   display: flex;
   flex-direction: column;
@@ -348,18 +391,21 @@
 }
 
 .control-label-row label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #cbd5e1;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--sk-text-primary);
+  font-family: 'Patrick Hand', cursive;
 }
 
 .control-value {
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  color: #818cf8;
-  background-color: rgba(99, 102, 241, 0.1);
-  padding: 0.15rem 0.5rem;
-  border-radius: 6px;
+  color: var(--sk-accent);
+  background-color: var(--sk-accent-glow);
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--sk-radius-wobbly-btn);
+  border: 1px dashed var(--sk-accent);
+  font-family: 'Comic Neue', cursive;
 }
 
 .input-with-buttons {
@@ -375,20 +421,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #23273a;
-  border: 1px solid #2e344e;
-  border-radius: 6px;
-  color: #cbd5e1;
+  background-color: var(--sk-bg-card);
+  border: 2px dashed var(--sk-border);
+  border-radius: var(--sk-radius-wobbly-btn);
+  color: var(--sk-text-primary);
   font-size: 1.2rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .input-with-buttons button:hover:not(:disabled) {
-  background-color: #2e344e;
-  border-color: #818cf8;
-  color: #f8fafc;
+  background-color: var(--sk-border);
+  border-color: var(--sk-accent);
+  color: var(--sk-accent);
 }
 
 .input-with-buttons button:disabled {
@@ -400,7 +446,9 @@
   flex: 1;
 }
 
-/* Checkbox field styling */
+/* ============================================================
+   CHECKBOX
+   ============================================================ */
 .checkbox-field {
   padding-top: 0.25rem;
 }
@@ -410,20 +458,23 @@
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
-  font-size: 0.85rem;
-  color: #cbd5e1;
+  font-size: 0.95rem;
+  color: var(--sk-text-primary);
   user-select: none;
+  font-family: 'Patrick Hand', cursive;
 }
 
 .checkbox-label input[type="checkbox"] {
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  accent-color: #6366f1;
+  accent-color: var(--sk-accent);
   cursor: pointer;
 }
 
-/* Sliders standard style reset */
+/* ============================================================
+   SLIDERS
+   ============================================================ */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
@@ -439,26 +490,27 @@ input[type="range"]::-webkit-slider-runnable-track {
   width: 100%;
   height: 6px;
   cursor: pointer;
-  background: #23273a;
+  background: var(--sk-border);
   border-radius: 3px;
 }
 
 input[type="range"]::-webkit-slider-thumb {
-  height: 16px;
-  width: 16px;
+  height: 18px;
+  width: 18px;
   border-radius: 50%;
-  background: #818cf8;
+  background: var(--sk-accent);
   cursor: pointer;
   -webkit-appearance: none;
-  margin-top: -5px;
+  margin-top: -6px;
   transition: all 0.15s ease;
-  box-shadow: 0 0 8px rgba(129, 140, 248, 0.5);
+  box-shadow: 0 0 8px var(--sk-accent-glow);
+  border: 2px solid var(--sk-accent-hover);
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
-  background: #6366f1;
-  transform: scale(1.15);
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.8);
+  background: var(--sk-accent-hover);
+  transform: scale(1.2);
+  box-shadow: 0 0 14px var(--sk-accent-glow);
 }
 
 .input-slider-wrapper {
@@ -470,12 +522,15 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .slider-ticks {
   display: flex;
   justify-content: space-between;
-  font-size: 0.7rem;
-  color: #64748b;
+  font-size: 0.75rem;
+  color: var(--sk-text-muted);
   padding: 0 0.1rem;
+  font-family: 'Comic Neue', cursive;
 }
 
-/* Buttons and icons styling */
+/* ============================================================
+   BUTTONS AND ICONS
+   ============================================================ */
 .btn-icon {
   background: transparent;
   border: none;
@@ -490,46 +545,50 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .btn-danger {
   width: 28px;
   height: 28px;
-  color: #64748b;
+  color: var(--sk-text-muted);
 }
 
 .btn-danger:hover {
-  background-color: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  background-color: rgba(224, 82, 82, 0.15);
+  color: var(--sk-danger);
 }
 
-/* Main Workspace Canvas Styling */
+/* ============================================================
+   MAIN WORKSPACE
+   ============================================================ */
 .workspace {
   flex: 1;
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: #0b0d13;
+  background-color: var(--sk-bg-deep);
   overflow: hidden;
 }
 
 .workspace-header {
   height: 70px;
   min-height: 70px;
-  border-bottom: 1px solid #1a1e2f;
+  border-bottom: 2px dashed var(--sk-border);
   padding: 0 2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #0f111a;
+  background-color: var(--sk-bg-main);
 }
 
 .workspace-title-area h2 {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1.2rem;
+  font-weight: 700;
   margin: 0;
-  color: #f1f5f9;
+  color: var(--sk-text-primary);
+  font-family: 'Architects Daughter', cursive;
 }
 
 .workspace-subtitle {
-  font-size: 0.75rem;
-  color: #64748b;
+  font-size: 0.8rem;
+  color: var(--sk-text-muted);
   margin: 0.15rem 0 0 0;
+  font-family: 'Comic Neue', cursive;
 }
 
 .workspace-controls-header {
@@ -543,18 +602,21 @@ input[type="range"]::-webkit-slider-thumb:hover {
   gap: 0.75rem;
 }
 
+/* ============================================================
+   ACTION BUTTONS
+   ============================================================ */
 .action-btn {
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.5rem 1.1rem;
+  border-radius: var(--sk-radius-wobbly-btn);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid transparent;
+  border: 2px dashed transparent;
 }
 
 .action-btn:disabled {
@@ -564,32 +626,36 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .btn-pdf {
   background-color: transparent;
-  border: 1px solid #313753;
-  color: #cbd5e1;
+  border: 2px dashed var(--sk-border);
+  color: var(--sk-text-primary);
 }
 
 .btn-pdf:hover:not(:disabled) {
-  background-color: #1a1e2f;
-  border-color: #64748b;
-  color: #f1f5f9;
+  background-color: var(--sk-bg-card);
+  border-color: var(--sk-accent-warm);
+  color: var(--sk-accent-warm);
 }
 
 .btn-print {
-  background: linear-gradient(135deg, #818cf8, #6366f1);
+  background: var(--sk-accent);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  border: 2px solid var(--sk-accent-hover);
+  box-shadow: 0 3px 10px var(--sk-accent-glow);
 }
 
 .btn-print:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
-  background: linear-gradient(135deg, #8b95f9, #7073f3);
+  transform: translateY(-2px) rotate(0.5deg);
+  box-shadow: 0 6px 18px var(--sk-accent-glow);
+  background: var(--sk-accent-hover);
 }
 
 .btn-print:active:not(:disabled) {
   transform: translateY(1px);
 }
 
+/* ============================================================
+   CANVAS STATS
+   ============================================================ */
 .canvas-stats {
   display: flex;
   gap: 0.75rem;
@@ -599,22 +665,27 @@ input[type="range"]::-webkit-slider-thumb:hover {
   display: flex;
   gap: 0.35rem;
   align-items: center;
-  background-color: #1a1e2f;
-  border: 1px solid #23273a;
+  background-color: var(--sk-bg-card);
+  border: 2px dashed var(--sk-border);
   padding: 0.3rem 0.65rem;
-  border-radius: 8px;
-  font-size: 0.75rem;
+  border-radius: var(--sk-radius-wobbly-btn);
+  font-size: 0.8rem;
 }
 
 .stat-label {
-  color: #94a3b8;
+  color: var(--sk-text-muted);
+  font-family: 'Patrick Hand', cursive;
 }
 
 .stat-value {
   font-weight: 700;
-  color: #a5b4fc;
+  color: var(--sk-accent);
+  font-family: 'Comic Neue', cursive;
 }
 
+/* ============================================================
+   CANVAS AREA — Sketch Pad Look
+   ============================================================ */
 .editor-canvas-container {
   flex: 1;
   padding: 2rem;
@@ -622,21 +693,22 @@ input[type="range"]::-webkit-slider-thumb:hover {
   align-items: center;
   justify-content: center;
   overflow: auto;
-  background-image: radial-gradient(#1e293b 1px, transparent 1px);
-  background-size: 24px 24px;
+  /* Dotted grid pattern like graph paper */
+  background-image: radial-gradient(var(--sk-border) 1px, transparent 1px);
+  background-size: 20px 20px;
   position: relative;
 }
 
-/* Canvas Card Wrapper */
+/* Canvas Card Wrapper — Clipboard backing */
 .canvas-wrapper-card {
-  background-color: #161a29;
+  background-color: var(--sk-bg-card);
   padding: 1.5rem;
-  border-radius: 16px;
-  border: 1px solid #23293f;
+  border-radius: var(--sk-radius-wobbly);
+  border: 3px dashed var(--sk-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
 }
 
 .preview-canvas {
@@ -645,11 +717,13 @@ input[type="range"]::-webkit-slider-thumb:hover {
   max-height: 70vh;
   object-fit: contain;
   background-color: #ffffff;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.55);
-  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  border-radius: 3px;
 }
 
-/* Zoom Scroll Viewport */
+/* ============================================================
+   ZOOM
+   ============================================================ */
 .canvas-scroll-viewport {
   transition: width 0.1s ease-out, height 0.1s ease-out;
   display: flex;
@@ -658,72 +732,75 @@ input[type="range"]::-webkit-slider-thumb:hover {
   flex-shrink: 0;
 }
 
-/* Zoom Controls Floating Toolbar */
 .zoom-controls-floating {
   position: absolute;
   bottom: 24px;
   right: 24px;
-  background: rgba(21, 24, 36, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 9999px;
-  padding: 6px 12px;
+  background: rgba(34, 29, 24, 0.85);
+  backdrop-filter: blur(10px);
+  border: 2px dashed var(--sk-border);
+  border-radius: var(--sk-radius-wobbly-btn);
+  padding: 6px 14px;
   display: flex;
   align-items: center;
   gap: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   z-index: 100;
 }
 
 .zoom-btn {
-  background: #23273a;
-  border: 1px solid #2e344e;
-  color: #cbd5e1;
-  width: 28px;
-  height: 28px;
+  background: var(--sk-bg-card);
+  border: 2px dashed var(--sk-border);
+  color: var(--sk-text-primary);
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 700;
   transition: all 0.2s ease;
   padding: 0;
   outline: none;
 }
 
 .zoom-btn:hover {
-  background: #6366f1;
-  border-color: #6366f1;
+  background: var(--sk-accent);
+  border-color: var(--sk-accent);
   color: #ffffff;
 }
 
 .zoom-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--sk-text-secondary);
   min-width: 44px;
   text-align: center;
+  font-family: 'Comic Neue', cursive;
 }
 
 .zoom-btn-reset {
   background: transparent;
   border: none;
-  color: #818cf8;
-  font-size: 0.75rem;
-  font-weight: 600;
+  color: var(--sk-accent);
+  font-size: 0.8rem;
+  font-weight: 700;
   cursor: pointer;
   padding: 4px 8px;
   transition: all 0.2s ease;
   outline: none;
+  font-family: 'Patrick Hand', cursive;
 }
 
 .zoom-btn-reset:hover {
-  color: #a5b4fc;
+  color: var(--sk-accent-hover);
 }
 
-/* Print Overrides */
+/* ============================================================
+   PRINT OVERRIDES
+   ============================================================ */
 @media print {
   body, html, #root, .app-container, .workspace, .editor-canvas-container, .canvas-wrapper-card, .canvas-scroll-viewport {
     background: #ffffff !important;

@@ -84,7 +84,7 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
           <span className="logo-icon">📐</span>
           <h1 className="logo-text">PrintFlow</h1>
         </div>
-        <span className="badge">v1.6.9</span>
+        <span className="badge">v2.0.0</span>
       </header>
 
       {/* Tab Switcher */}
@@ -106,7 +106,7 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
       <div className="sidebar-scrollable">
         {!isNativeApp && (
           <a
-            href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/1.6.9"
+            href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/2.0.0"
             target="_blank"
             rel="noopener noreferrer"
             className="download-desktop-card"
@@ -318,8 +318,31 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
 
               <div className="control-field">
                 <div className="control-label-row">
+                  <label htmlFor="mix-3x3">3" × 3" Photos</label>
+                  <span className="control-value">{mixedQuantities.threeByThree || 0}</span>
+                </div>
+                <div className="input-slider-wrapper">
+                  <input
+                    type="range"
+                    id="mix-3x3"
+                    min="0"
+                    max="6"
+                    step="1"
+                    value={mixedQuantities.threeByThree || 0}
+                    onChange={(e) => setMixedQuantities({ ...mixedQuantities, threeByThree: parseInt(e.target.value) || 0 })}
+                  />
+                  <div className="slider-ticks">
+                    <span>0</span>
+                    <span>3</span>
+                    <span>6</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="control-field">
+                <div className="control-label-row">
                   <label htmlFor="mix-passport">Passport Photos</label>
-                  <span className="control-value">{mixedQuantities.passport}</span>
+                  <span className="control-value">{mixedQuantities.passport || 0}</span>
                 </div>
                 <div className="input-slider-wrapper">
                   <input
@@ -328,7 +351,7 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
                     min="0"
                     max="8"
                     step="1"
-                    value={mixedQuantities.passport}
+                    value={mixedQuantities.passport || 0}
                     onChange={(e) => setMixedQuantities({ ...mixedQuantities, passport: parseInt(e.target.value) || 0 })}
                   />
                   <div className="slider-ticks">
@@ -347,7 +370,7 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
                 color: '#a5b4fc',
                 lineHeight: '1.4'
               }}>
-                Total pieces: {mixedQuantities.oneByOne + mixedQuantities.twoByTwo + mixedQuantities.passport} —
+                Total pieces: {(mixedQuantities.oneByOne || 0) + (mixedQuantities.twoByTwo || 0) + (mixedQuantities.threeByThree || 0) + (mixedQuantities.passport || 0)} —
                 Auto-arranged largest-first onto the paper sheet.
               </div>
             </div>
@@ -375,6 +398,9 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
             </div>
           </section>
         )}
+      </div>
+      <div className="sidebar-footer">
+        <span>✏️ Created by DJC</span>
       </div>
     </aside>
   )

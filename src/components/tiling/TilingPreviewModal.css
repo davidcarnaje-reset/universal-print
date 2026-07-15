@@ -1,3 +1,7 @@
+/* ============================================================
+   SKETCHY THEME — Preview Modal Styles
+   ============================================================ */
+
 /* Immersive Backdrop Overlay */
 .preview-modal-overlay {
   position: fixed;
@@ -5,8 +9,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(9, 11, 20, 0.94);
-  backdrop-filter: blur(12px);
+  background-color: rgba(26, 22, 18, 0.94);
+  backdrop-filter: blur(10px);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -25,9 +29,9 @@
   width: 100%;
   max-width: 1200px;
   height: 90vh;
-  background-color: #111422;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
+  background-color: var(--sk-bg-main);
+  border: 3px dashed var(--sk-border);
+  border-radius: var(--sk-radius-wobbly);
   box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
@@ -43,8 +47,8 @@
 /* Modal Header */
 .preview-modal-header {
   padding: 1.25rem 2rem;
-  background-color: #161a2b;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background-color: var(--sk-bg-card);
+  border-bottom: 2px dashed var(--sk-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -52,26 +56,28 @@
 
 .header-info h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 700;
-  color: #f8fafc;
-  letter-spacing: -0.25px;
+  color: var(--sk-text-primary);
+  letter-spacing: 0.5px;
+  font-family: 'Architects Daughter', cursive;
 }
 
 .header-info p {
   margin: 0.2rem 0 0 0;
-  font-size: 0.8rem;
-  color: #64748b;
+  font-size: 0.85rem;
+  color: var(--sk-text-muted);
+  font-family: 'Comic Neue', cursive;
 }
 
 .close-modal-btn {
   background: transparent;
-  border: none;
-  color: #94a3b8;
+  border: 2px dashed var(--sk-border);
+  color: var(--sk-text-secondary);
   font-size: 1.25rem;
   cursor: pointer;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -80,8 +86,9 @@
 }
 
 .close-modal-btn:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: #f1f5f9;
+  background-color: rgba(224, 82, 82, 0.15);
+  border-color: var(--sk-danger);
+  color: var(--sk-danger);
 }
 
 /* Modal Body - Grid View */
@@ -90,8 +97,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background-color: #0b0d16;
-  background-image: radial-gradient(#1e293b 1px, transparent 1px);
+  background-color: var(--sk-bg-deep);
+  background-image: radial-gradient(var(--sk-border) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
@@ -117,7 +124,7 @@
   position: relative;
   border-radius: 4px;
   background-color: #ffffff;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4), 0 0 0 2px var(--sk-border);
   transition: width 0.15s ease-out, height 0.15s ease-out;
   display: flex;
   flex-direction: column;
@@ -127,15 +134,16 @@
   position: absolute;
   bottom: 8px;
   right: 8px;
-  background-color: rgba(15, 17, 26, 0.75);
+  background-color: rgba(34, 29, 24, 0.8);
   backdrop-filter: blur(4px);
-  color: #f1f5f9;
+  color: var(--sk-text-primary);
   font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: var(--sk-radius-wobbly-btn);
   pointer-events: none;
-  font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 700;
+  font-family: 'Patrick Hand', cursive;
+  border: 1px dashed var(--sk-border);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -146,8 +154,8 @@
 
 /* Modal Bottom configurations Bar */
 .preview-modal-footer {
-  background-color: #141727;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background-color: var(--sk-bg-card);
+  border-top: 2px dashed var(--sk-border);
   padding: 1.25rem 2rem;
   display: flex;
   align-items: center;
@@ -176,11 +184,12 @@
 }
 
 .footer-control-item label {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #94a3b8;
-  font-weight: 600;
+  color: var(--sk-accent-warm);
+  font-weight: 700;
+  font-family: 'Patrick Hand', cursive;
 }
 
 .slider-wrapper {
@@ -194,21 +203,22 @@
   -webkit-appearance: none;
   appearance: none;
   flex: 1;
-  height: 4px;
-  background: #23273a;
-  border-radius: 2px;
+  height: 5px;
+  background: var(--sk-border);
+  border-radius: 3px;
   outline: none;
 }
 
 .slider-wrapper input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  height: 14px;
-  width: 14px;
+  height: 16px;
+  width: 16px;
   border-radius: 50%;
-  background: #6366f1;
+  background: var(--sk-accent);
   cursor: pointer;
   transition: transform 0.1s ease;
+  border: 2px solid var(--sk-accent-hover);
 }
 
 .slider-wrapper input[type="range"]::-webkit-slider-thumb:hover {
@@ -216,14 +226,16 @@
 }
 
 .value-badge {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  color: #818cf8;
-  background-color: rgba(99, 102, 241, 0.12);
-  padding: 2px 6px;
-  border-radius: 4px;
+  color: var(--sk-accent);
+  background-color: var(--sk-accent-glow);
+  padding: 2px 8px;
+  border-radius: var(--sk-radius-wobbly-btn);
   min-width: 44px;
   text-align: center;
+  border: 1px dashed var(--sk-accent);
+  font-family: 'Comic Neue', cursive;
 }
 
 /* Checklist toggles style */
@@ -240,11 +252,12 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.8rem !important;
+  font-size: 0.9rem !important;
   text-transform: none !important;
   letter-spacing: 0px !important;
-  color: #cbd5e1 !important;
-  font-weight: 500 !important;
+  color: var(--sk-text-primary) !important;
+  font-weight: 700 !important;
+  font-family: 'Patrick Hand', cursive !important;
   cursor: pointer;
   user-select: none;
   transition: opacity 0.2s ease;
@@ -253,7 +266,7 @@
 .toggle-label input[type="checkbox"] {
   width: 14px;
   height: 14px;
-  accent-color: #6366f1;
+  accent-color: var(--sk-accent);
   cursor: pointer;
 }
 
@@ -265,14 +278,14 @@
 }
 
 .preview-action-btn {
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 0.95rem;
+  font-weight: 700;
   padding: 0.65rem 1.25rem;
-  border-radius: 8px;
+  border-radius: var(--sk-radius-wobbly-btn);
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
+  transition: all 0.25s ease;
+  border: 2px dashed transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -285,32 +298,36 @@
 
 .preview-action-btn.secondary {
   background-color: transparent;
-  border-color: #313753;
-  color: #cbd5e1;
+  border-color: var(--sk-border);
+  color: var(--sk-text-primary);
 }
 
 .preview-action-btn.secondary:hover:not(:disabled) {
   background-color: rgba(255, 255, 255, 0.04);
-  border-color: #475569;
-  color: #f1f5f9;
+  border-color: var(--sk-accent-warm);
+  color: var(--sk-accent-warm);
 }
 
 .preview-action-btn.primary {
-  background: linear-gradient(135deg, #818cf8, #6366f1);
+  background: var(--sk-accent);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+  border: 2px solid var(--sk-accent-hover);
+  box-shadow: 0 3px 10px var(--sk-accent-glow);
 }
 
 .preview-action-btn.primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
-  background: linear-gradient(135deg, #8b95f9, #7073f3);
+  transform: translateY(-2px) rotate(0.5deg);
+  box-shadow: 0 6px 16px var(--sk-accent-glow);
+  background: var(--sk-accent-hover);
 }
 
 .preview-action-btn.primary:active:not(:disabled) {
   transform: translateY(1px);
 }
 
+/* ============================================================
+   PRINT OVERRIDES
+   ============================================================ */
 @media print {
   /* 1. Force explicit real-world target paper dimensions */
   @page {
@@ -405,7 +422,7 @@
     box-shadow: none !important;
     -webkit-box-shadow: none !important;
     filter: none !important;
-    border: none !important; /* Removes any extra container boundary line artifacts */
+    border: none !important;
     outline: none !important;
     background: #ffffff !important;
   }
@@ -426,8 +443,8 @@
   .print-tile-image-node {
     width: 100% !important;
     height: 100% !important;
-    object-fit: contain !important; /* Preserves 1:1 original image aspect ratio without distortion */
-    image-rendering: -webkit-optimize-contrast !important; /* Forces Chromium to use high-contrast rendering */
+    object-fit: contain !important;
+    image-rendering: -webkit-optimize-contrast !important;
     image-rendering: crisp-edges !important;
   }
 }

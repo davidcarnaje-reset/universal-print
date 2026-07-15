@@ -46,7 +46,7 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
   const idWidthMm = isStandardMode ? idDef.width : 0
   const idHeightMm = isStandardMode ? idDef.height : 0
   const safetyMarginMM = 5
-  const spacingMm = idSpacing
+  const spacingMm = Number(idSpacing) || 0
 
   const cols = isStandardMode
     ? Math.max(0, Math.floor((paperWidthMM - 2 * safetyMarginMM + spacingMm) / (idWidthMm + spacingMm)))
@@ -109,17 +109,16 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, paperWidthMM * P, paperHeightMM * P)
 
-    const marginPx = safetyMarginMM * P
-
-    const usableW = (paperWidthMM - 2 * safetyMarginMM) * P
-    const usableH = (paperHeightMM - 2 * safetyMarginMM) * P
+    // const marginPx = safetyMarginMM * P
+    // const usableW = (paperWidthMM - 2 * safetyMarginMM) * P
+    // const usableH = (paperHeightMM - 2 * safetyMarginMM) * P
 
     // Draw safety margins dashed rect
-    ctx.strokeStyle = '#cbd5e1'
-    ctx.lineWidth = 0.5 * P
-    ctx.setLineDash([2 * P, 2 * P])
-    ctx.strokeRect(marginPx, marginPx, usableW, usableH)
-    ctx.setLineDash([]) // Reset
+    // ctx.strokeStyle = '#cbd5e1'
+    // ctx.lineWidth = 0.5 * P
+    // ctx.setLineDash([2 * P, 2 * P])
+    // ctx.strokeRect(marginPx, marginPx, usableW, usableH)
+    // ctx.setLineDash([]) // Reset
 
     if (!imageElement) {
       ctx.fillStyle = '#94a3b8'
@@ -210,7 +209,8 @@ export const IDPreviewModal: React.FC<IDPreviewModalProps> = ({
     spacingMm,
     placedItems,
     isStandardMode,
-    P
+    P,
+    isOpen
   ])
 
   if (!isOpen) return null

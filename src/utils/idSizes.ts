@@ -1,6 +1,6 @@
 // Shared ID size definitions used by IDSidebar, IDWorkspace, and IDPreviewModal
 
-export type IdSizeKey = '1x1' | '2x2' | 'passport' | 'package_3x3' | 'custom_mix'
+export type IdSizeKey = '1x1' | '2x2' | '3x3' | 'passport' | 'package_3x3' | 'custom_mix'
 
 export interface IdSizeDef {
   width: number
@@ -13,6 +13,7 @@ export interface IdSizeDef {
 export const ID_SIZES: Record<IdSizeKey, IdSizeDef> = {
   '1x1':    { width: 25.4, height: 25.4, label: '1" x 1" (25.4 × 25.4 mm)' },
   '2x2':    { width: 50.8, height: 50.8, label: '2" x 2" (50.8 × 50.8 mm)' },
+  '3x3':    { width: 76.2, height: 76.2, label: '3" x 3" (76.2 × 76.2 mm)' },
   'passport': { width: 35.0, height: 45.0, label: 'Passport (35 × 45 mm)' },
   'package_3x3': { width: 0, height: 0, label: '3×3 Combo Package (9 Pieces Mix)', isPackage: true },
   'custom_mix':  { width: 0, height: 0, label: '[Custom] Combined Mixed Sizes...', isCustomMix: true }
@@ -29,12 +30,14 @@ export const PACKAGE_3X3_ITEMS = [
 export interface MixedQuantities {
   oneByOne: number
   twoByTwo: number
+  threeByThree: number
   passport: number
 }
 
 export const DEFAULT_MIXED_QUANTITIES: MixedQuantities = {
   oneByOne: 4,
   twoByTwo: 2,
+  threeByThree: 1,
   passport: 2
 }
 
@@ -62,16 +65,24 @@ export function calculateCustomMixLayout(
   const usableW = paperW - 2 * safetyMargin
   const usableH = paperH - 2 * safetyMargin
 
+  const q3x3 = quantities?.threeByThree ?? 0
+  const q2x2 = quantities?.twoByTwo ?? 0
+  const qPassport = quantities?.passport ?? 0
+  const q1x1 = quantities?.oneByOne ?? 0
+
   // Build item list sorted by area (largest first)
   const items: { w: number; h: number; label: string }[] = []
 
-  for (let i = 0; i < quantities.twoByTwo; i++) {
+  for (let i = 0; i < q3x3; i++) {
+    items.push({ w: 76.2, h: 76.2, label: '3×3' })
+  }
+  for (let i = 0; i < q2x2; i++) {
     items.push({ w: 50.8, h: 50.8, label: '2×2' })
   }
-  for (let i = 0; i < quantities.passport; i++) {
+  for (let i = 0; i < qPassport; i++) {
     items.push({ w: 35, h: 45, label: 'Passport' })
   }
-  for (let i = 0; i < quantities.oneByOne; i++) {
+  for (let i = 0; i < q1x1; i++) {
     items.push({ w: 25.4, h: 25.4, label: '1×1' })
   }
 
@@ -121,6 +132,7 @@ export function calculatePackage3x3Layout(
   spacing: number
 ): PlacedItem[] {
   const quantities: MixedQuantities = {
+    threeByThree: 0,
     twoByTwo: 1,
     passport: 4,
     oneByOne: 4

@@ -1,11 +1,39 @@
+/* ============================================================
+   SKETCHY THEME — Global Foundation
+   ============================================================ */
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  /* --- Sketchy Fonts --- */
+  font-family: 'Comic Neue', 'Patrick Hand', cursive, system-ui, sans-serif;
+  line-height: 1.6;
   font-weight: 400;
 
+  /* --- Sketchy Color Palette --- */
+  --sk-bg-deep: #1a1612;
+  --sk-bg-main: #221d18;
+  --sk-bg-card: #2b2520;
+  --sk-bg-input: #1e1a15;
+  --sk-border: #3d352d;
+  --sk-border-hover: #5a4e42;
+  --sk-text-primary: #f0e6d6;
+  --sk-text-secondary: #b5a898;
+  --sk-text-muted: #7a6e62;
+  --sk-accent: #3bb3a4;
+  --sk-accent-hover: #4dd4c2;
+  --sk-accent-glow: rgba(59, 179, 164, 0.25);
+  --sk-accent-warm: #d4a853;
+  --sk-accent-warm-glow: rgba(212, 168, 83, 0.2);
+  --sk-danger: #e05252;
+  --sk-success: #5cb87a;
+
+  /* --- Wobbly border-radius (hand-drawn look) --- */
+  --sk-radius-wobbly: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  --sk-radius-wobbly-sm: 15px 255px 15px 225px / 225px 15px 255px 15px;
+  --sk-radius-wobbly-btn: 30px 8px 30px 8px / 8px 30px 8px 30px;
+
   color-scheme: dark;
-  color: #e2e8f0;
-  background-color: #0b0d13;
+  color: var(--sk-text-primary);
+  background-color: var(--sk-bg-deep);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -35,15 +63,16 @@ body {
 
 a {
   font-weight: 500;
-  color: #818cf8;
+  color: var(--sk-accent);
   text-decoration: inherit;
 }
 a:hover {
-  color: #6366f1;
+  color: var(--sk-accent-hover);
 }
 
 h1, h2, h3, h4, h5, h6 {
   margin: 0;
+  font-family: 'Patrick Hand', 'Architects Daughter', cursive;
 }
 
 @media print {

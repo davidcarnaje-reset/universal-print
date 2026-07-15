@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 import React, { useEffect, useRef, useMemo } from 'react'
-import { Canvas, FabricImage, Rect, FabricText, Group } from 'fabric'
+import { Canvas, FabricImage, FabricText } from 'fabric'
 import { IDPreviewModal } from './IDPreviewModal'
 import { isNativeApp } from '../../utils/env'
 import {
@@ -50,7 +50,7 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
   const canvasHeight = cellH
 
   const safetyMarginMM = 5
-  const spacingMm = idSpacing
+  const spacingMm = Number(idSpacing) || 0
 
   // Determine if this is a standard single-size mode or a multi-size mode
   const isStandardMode = idSize !== 'package_3x3' && idSize !== 'custom_mix'
@@ -101,15 +101,18 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
     })
 
     fabricCanvasRef.current = canvas
+    ;(window as any).__fabricCanvas = canvas
 
     return () => {
       canvas.dispose()
       fabricCanvasRef.current = null
+      delete (window as any).__fabricCanvas
     }
   }, [paperWidthMM, paperHeightMM])
 
   // Unified Rendering useEffect Hook
   useEffect(() => {
+    let isCurrent = true
     const canvas = fabricCanvasRef.current
     if (!canvas) return
 
@@ -120,6 +123,7 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
     }
 
     // Add Margins Dashed Rect
+    /*
     const marginRect = new Rect({
       left: marginPx,
       top: marginPx,
@@ -132,7 +136,8 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
       selectable: false,
       evented: false
     })
-    canvas.add(marginRect)
+    // canvas.add(marginRect)
+    */
 
     if (!uploadedImage) {
       const text = new FabricText('Canvas ready. Upload an image to preview.', {
@@ -178,13 +183,39 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
       const centerOffsetX = (paperWidthMM - totalGridWidth) / 2;
       const centerOffsetY = (paperHeightMM - totalGridHeight) / 2;
 
+      console.log('ID standard mode layout specs:', {
+        paperWidthMM,
+        paperHeightMM,
+        totalGridWidth,
+        totalGridHeight,
+        centerOffsetX,
+        centerOffsetY,
+        cols,
+        rows
+      });
+      (window as any).__renderSpecs = {
+        paperWidthMM,
+        paperHeightMM,
+        totalGridWidth,
+        totalGridHeight,
+        centerOffsetX,
+        centerOffsetY,
+        cols,
+        rows
+      };
+
       // Clear old grid objects from Fabric canvas
       const existingPhotos = canvas.getObjects().filter((obj: any) => obj.id === 'id-photo-item');
       canvas.remove(...existingPhotos);
 
       // Render the centered grid loop using Group containment
       FabricImage.fromURL(uploadedImage).then((oImg) => {
+        if (!isCurrent) return;
         const imgElement = oImg.getElement() as HTMLImageElement
+
+        // Clean up old photos once more right before drawing (handles quick consecutive updates)
+        const currentPhotos = canvas.getObjects().filter((obj: any) => obj.id === 'id-photo-item');
+        canvas.remove(...currentPhotos);
         const targetAspectRatio = idWidthMm / idHeightMm
         const imgAspectRatio = imgElement.width / imgElement.height
         let sx = 0
@@ -200,7 +231,7 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
           sy = (imgElement.height - sHeight) / 2
         }
 
-        const idObjectsArray: any[] = [];
+        const clonePromises: Promise<void>[] = []
 
         for (let r = 0; r < rows; r++) {
           for (let c = 0; c < cols; c++) {
@@ -214,43 +245,38 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
             const pxW = idWidthMm * CANVAS_SCALE;
             const pxH = idHeightMm * CANVAS_SCALE;
 
-            const idImg = new FabricImage(imgElement, {
-              left: pxX,
-              top: pxY,
-              width: sWidth,
-              height: sHeight,
-              cropX: sx,
-              cropY: sy,
-              scaleX: pxW / sWidth,
-              scaleY: pxH / sHeight,
-              selectable: false,
-              evented: false,
-              stroke: '#cccccc',
-              strokeWidth: 1
+            const clonePromise = oImg.clone().then((clonedImg) => {
+              if (!isCurrent) return;
+              clonedImg.set({
+                originX: 'left',
+                originY: 'top',
+                left: pxX,
+                top: pxY,
+                width: sWidth,
+                height: sHeight,
+                cropX: sx,
+                cropY: sy,
+                scaleX: pxW / sWidth,
+                scaleY: pxH / sHeight,
+                selectable: false,
+                evented: false,
+                stroke: '#cccccc',
+                strokeWidth: 1,
+                id: 'id-photo-item'
+              })
+              clonedImg.setCoords()
+              canvas.add(clonedImg)
             })
-            idObjectsArray.push(idImg)
+            clonePromises.push(clonePromise)
           }
         }
 
-        // Wrap all individual items into a single non-interactable strict structural set
-        const finalCenteredGroup = new Group(idObjectsArray, {
-          id: 'id-photo-item',
-          selectable: false,
-          evented: false,
-          subTargetCheck: false
-        } as any);
-
-        // 1. FORCE FABRIC CORE CENTER CALCULATIONS
-        canvas.centerObject(finalCenteredGroup);
-
-        // 2. Clear native coordinate origin drift overrides
-        finalCenteredGroup.setCoords();
-
-        // 3. Render directly onto the screen context
-        canvas.add(finalCenteredGroup);
-        canvas.requestRenderAll();
+        Promise.all(clonePromises).then(() => {
+          if (!isCurrent) return;
+          canvas.requestRenderAll()
+        })
       }).catch((err) => {
-        console.error('Failed to draw centered ID pictures in Fabric Group:', err)
+        console.error('Failed to draw centered ID pictures:', err)
       })
     } else {
       // --- MULTI-SIZE MODE (package_3x3 or custom_mix) ---
@@ -276,8 +302,12 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
       canvas.remove(...existingPhotos);
 
       FabricImage.fromURL(uploadedImage).then((oImg) => {
+        if (!isCurrent) return;
         const imgElement = oImg.getElement() as HTMLImageElement
-        const idObjectsArray: any[] = [];
+
+        // Clean up old photos once more right before drawing (handles quick consecutive updates)
+        const currentPhotos = canvas.getObjects().filter((obj: any) => obj.id === 'id-photo-item');
+        canvas.remove(...currentPhotos);
 
         for (const item of placedItems) {
           const targetAR = item.w / item.h
@@ -301,8 +331,8 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
           const pxH = item.h * CANVAS_SCALE
 
           const idImg = new FabricImage(imgElement, {
-            left: pxX,
-            top: pxY,
+            originX: 'left',
+            originY: 'top',
             width: sWidth,
             height: sHeight,
             cropX: sx,
@@ -312,23 +342,24 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
             selectable: false,
             evented: false,
             stroke: '#cccccc',
-            strokeWidth: 1
+            strokeWidth: 1,
+            id: 'id-photo-item'
           })
-          idObjectsArray.push(idImg)
+          idImg.set({
+            left: pxX,
+            top: pxY
+          })
+          idImg.setCoords()
+          canvas.add(idImg)
         }
-
-        const mixedGroup = new Group(idObjectsArray, {
-          id: 'id-photo-item',
-          selectable: false,
-          evented: false,
-          subTargetCheck: false
-        } as any);
-
-        canvas.add(mixedGroup);
         canvas.requestRenderAll();
       }).catch((err) => {
         console.error('Failed to draw mixed ID pictures:', err)
       })
+    }
+
+    return () => {
+      isCurrent = false
     }
   }, [
     uploadedImage,
@@ -396,7 +427,7 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
             <div className="workspace-actions">
               {!isNativeApp && (
                 <a
-                  href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/1.6.9"
+                  href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/2.0.0"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="action-btn btn-pdf"

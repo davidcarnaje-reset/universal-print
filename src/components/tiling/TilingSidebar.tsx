@@ -83,7 +83,7 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
           <span className="logo-icon">📐</span>
           <h1 className="logo-text">PrintFlow</h1>
         </div>
-        <span className="badge">v1.6.9</span>
+        <span className="badge">v2.0.0</span>
       </header>
 
       {/* Tab Switcher */}
@@ -105,7 +105,7 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
       <div className="sidebar-scrollable">
         {!isNativeApp && (
           <a
-            href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/1.6.9"
+            href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/2.0.0"
             target="_blank"
             rel="noopener noreferrer"
             className="download-desktop-card"
@@ -301,6 +301,9 @@ export const TilingSidebar: React.FC<TilingSidebarProps> = ({
             </div>
           </div>
         </section>
+      </div>
+      <div className="sidebar-footer">
+        <span>✏️ Created by DJC</span>
       </div>
     </aside>
   )

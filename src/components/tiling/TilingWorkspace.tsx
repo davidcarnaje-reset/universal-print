@@ -191,6 +191,7 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
 
   // Unified Rendering useEffect Hook
   useEffect(() => {
+    let isCurrent = true
     const canvas = fabricCanvasRef.current
     if (!canvas) return
 
@@ -224,6 +225,7 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
         runDraw(existingImg)
       } else {
         FabricImage.fromURL(uploadedImage).then((img) => {
+          if (!isCurrent) return
           canvas.clear()
           canvas.backgroundColor = '#ffffff'
           if (typeof (canvas as any).invalidateState === 'function') {
@@ -284,6 +286,10 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
       drawGridOverlay(canvas)
       canvas.requestRenderAll()
     }
+
+    return () => {
+      isCurrent = false
+    }
   }, [
     uploadedImage,
     tilingRows,
@@ -326,7 +332,7 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
             <div className="workspace-actions">
               {!isNativeApp && (
                 <a
-                  href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/1.6.9"
+                  href="https://github.com/davidcarnaje-reset/universal-print/releases/tag/2.0.0"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="action-btn btn-pdf"
