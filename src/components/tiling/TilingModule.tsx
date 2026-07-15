@@ -82,6 +82,8 @@ export const TilingModule: React.FC<TilingModuleProps> = ({
     setUploadedFileSize(null)
   }
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false)
+
   return (
     <>
       <TilingSidebar
@@ -104,6 +106,8 @@ export const TilingModule: React.FC<TilingModuleProps> = ({
         setTilingCols={setTilingCols}
         tilingMode={tilingMode}
         setTilingMode={setTilingMode}
+        isSidebarOpen={isSidebarOpen}
+        onCloseSidebar={() => setIsSidebarOpen(false)}
       />
 
       <TilingWorkspace
@@ -123,6 +127,7 @@ export const TilingModule: React.FC<TilingModuleProps> = ({
         setShowMargin={setShowMargin}
         tilingMode={tilingMode}
         setTilingMode={setTilingMode}
+        toggleSidebar={() => setIsSidebarOpen(prev => !prev)}
       />
     </>
   )

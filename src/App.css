@@ -799,6 +799,125 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* ============================================================
+   RESPONSIVE MOBILE STYLES
+   ============================================================ */
+.mobile-menu-btn {
+  display: none;
+  background: var(--sk-bg-card);
+  border: 2px dashed var(--sk-border);
+  border-radius: var(--sk-radius-wobbly-btn);
+  color: var(--sk-text-primary);
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  cursor: pointer;
+  outline: none;
+  margin-right: 1rem;
+}
+.mobile-menu-btn:hover {
+  background: var(--sk-border);
+  color: var(--sk-accent);
+}
+
+.mobile-close-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--sk-text-secondary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  outline: none;
+}
+.mobile-close-btn:hover {
+  color: var(--sk-danger);
+}
+
+@media (max-width: 768px) {
+  /* Sidebar as mobile drawer overlay */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 290px;
+    min-width: 290px;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 1001;
+    border-right: 2px dashed var(--sk-border);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+  }
+  
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex;
+  }
+  
+  .mobile-close-btn {
+    display: inline-block;
+  }
+
+  /* Workspace adaptation */
+  .workspace-header {
+    padding: 0.5rem 1rem;
+    height: auto;
+    min-height: 60px;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .workspace-title-area {
+    flex: 1;
+    min-width: 150px;
+  }
+
+  .workspace-subtitle {
+    display: none; /* Hide description to save vertical space on mobile */
+  }
+
+  .workspace-controls-header {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .canvas-stats {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .stat-pill {
+    padding: 0.2rem 0.45rem;
+    font-size: 0.7rem;
+  }
+
+  .editor-canvas-container {
+    padding: 1rem;
+  }
+
+  .preview-canvas {
+    max-height: 55vh;
+  }
+}
+
+/* ============================================================
    PRINT OVERRIDES
    ============================================================ */
 @media print {

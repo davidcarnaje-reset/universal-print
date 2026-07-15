@@ -40,6 +40,8 @@ export const IDModule: React.FC<IDModuleProps> = ({
     setUploadedFileSize(null)
   }
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false)
+
   return (
     <>
       <IDSidebar
@@ -62,6 +64,8 @@ export const IDModule: React.FC<IDModuleProps> = ({
         setIdSpacing={setIdSpacing}
         mixedQuantities={mixedQuantities}
         setMixedQuantities={setMixedQuantities}
+        isSidebarOpen={isSidebarOpen}
+        onCloseSidebar={() => setIsSidebarOpen(false)}
       />
 
       <IDWorkspace
@@ -76,6 +80,7 @@ export const IDModule: React.FC<IDModuleProps> = ({
         isPreviewOpen={isPreviewOpen}
         setIsPreviewOpen={setIsPreviewOpen}
         mixedQuantities={mixedQuantities}
+        toggleSidebar={() => setIsSidebarOpen(prev => !prev)}
       />
     </>
   )

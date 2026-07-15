@@ -26,6 +26,8 @@ interface IDSidebarProps {
   setIdSpacing: (spacing: number) => void
   mixedQuantities: MixedQuantities
   setMixedQuantities: (q: MixedQuantities) => void
+  isSidebarOpen: boolean
+  onCloseSidebar: () => void
 }
 
 export const IDSidebar: React.FC<IDSidebarProps> = ({
@@ -47,7 +49,9 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
   idSpacing,
   setIdSpacing,
   mixedQuantities,
-  setMixedQuantities
+  setMixedQuantities,
+  isSidebarOpen,
+  onCloseSidebar
 }) => {
 
   // File dropzone trigger
@@ -78,14 +82,23 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
   })
 
   return (
-    <aside className="sidebar">
-      <header className="sidebar-header">
-        <div className="logo-container">
-          <span className="logo-icon">📐</span>
-          <h1 className="logo-text">PrintFlow</h1>
-        </div>
-        <span className="badge">v2.0.0</span>
-      </header>
+    <>
+      {isSidebarOpen && (
+        <div className="sidebar-overlay" onClick={onCloseSidebar} />
+      )}
+      <aside className={`sidebar ${isSidebarOpen ? 'mobile-open' : ''}`}>
+        <header className="sidebar-header">
+          <div className="logo-container">
+            <span className="logo-icon">📐</span>
+            <h1 className="logo-text">PrintFlow</h1>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className="badge">v2.0.0</span>
+            <button className="mobile-close-btn" onClick={onCloseSidebar} aria-label="Close Sidebar">
+              ✕
+            </button>
+          </div>
+        </header>
 
       {/* Tab Switcher */}
       <div className="tab-switcher">
@@ -403,5 +416,6 @@ export const IDSidebar: React.FC<IDSidebarProps> = ({
         <span>✏️ Created by DJC</span>
       </div>
     </aside>
+    </>
   )
 }

@@ -24,6 +24,7 @@ interface IDWorkspaceProps {
   isPreviewOpen: boolean
   setIsPreviewOpen: (open: boolean) => void
   mixedQuantities: MixedQuantities
+  toggleSidebar: () => void
 }
 
 export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
@@ -37,7 +38,8 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
   idSpacing,
   isPreviewOpen,
   setIsPreviewOpen,
-  mixedQuantities
+  mixedQuantities,
+  toggleSidebar
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const fabricCanvasRef = useRef<Canvas | null>(null)
@@ -399,6 +401,9 @@ export const IDWorkspace: React.FC<IDWorkspaceProps> = ({
   return (
     <main className="workspace">
       <header className="workspace-header">
+        <button className="mobile-menu-btn" onClick={toggleSidebar} aria-label="Toggle Sidebar">
+          ☰
+        </button>
         <div className="workspace-title-area">
           <h2>Layout Canvas (ID Picture Mode)</h2>
           <p className="workspace-subtitle">
