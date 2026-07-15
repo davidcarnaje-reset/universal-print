@@ -81,6 +81,72 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
   cellWRef.current = cellW
   cellHRef.current = cellH
 
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const zoomRef = useRef(zoom)
+  useEffect(() => {
+    zoomRef.current = zoom
+  }, [zoom])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    let initialDist = 0
+    let initialZoom = zoomRef.current
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault()
+        const t1 = e.touches[0]
+        const t2 = e.touches[1]
+        initialDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY)
+        initialZoom = zoomRef.current
+      }
+    }
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && initialDist > 0) {
+        e.preventDefault()
+        const t1 = e.touches[0]
+        const t2 = e.touches[1]
+        const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY)
+        const factor = dist / initialDist
+        const targetZoom = initialZoom * factor
+        const clampedZoom = Math.max(0.25, Math.min(2.0, targetZoom))
+        setZoom(clampedZoom)
+      }
+    }
+
+    const handleTouchEnd = () => {
+      initialDist = 0
+    }
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault()
+        const delta = e.deltaY < 0 ? 0.05 : -0.05
+        setZoom((z) => {
+          const currentZoom = typeof z === 'function' ? (z as any)(zoomRef.current) : z
+          return Math.max(0.25, Math.min(2.0, currentZoom + delta))
+        })
+      }
+    }
+
+    container.addEventListener('touchstart', handleTouchStart, { passive: false })
+    container.addEventListener('touchmove', handleTouchMove, { passive: false })
+    container.addEventListener('touchend', handleTouchEnd)
+    container.addEventListener('touchcancel', handleTouchEnd)
+    container.addEventListener('wheel', handleWheel, { passive: false })
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart)
+      container.removeEventListener('touchmove', handleTouchMove)
+      container.removeEventListener('touchend', handleTouchEnd)
+      container.removeEventListener('touchcancel', handleTouchEnd)
+      container.removeEventListener('wheel', handleWheel)
+    }
+  }, [setZoom])
+
   // Synchronize default position when canvas dimensions change and there's no image yet
   useEffect(() => {
     if (!uploadedImage) {
@@ -359,41 +425,41 @@ export const TilingWorkspace: React.FC<TilingWorkspaceProps> = ({
         </div>
       </header>
 
-      <div className="editor-canvas-container">
+      <div className="editor-canvas-container" ref={containerRef}>
         <div className="canvas-scroll-viewport" style={{ width: (canvasWidth + 48) * zoom, height: (canvasHeight + 48) * zoom, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="canvas-wrapper-card" style={{ transform: `scale(${zoom})`, transformOrigin: 'center center', transition: 'transform 0.1s ease-out' }}>
             <canvas ref={canvasRef} />
           </div>
         </div>
+      </div>
 
-        {/* Zoom controls floating */}
-        <div className="zoom-controls-floating">
-          <button
-            onClick={() => setZoom(z => Math.max(0.25, typeof z === 'function' ? (z as any)(zoom) : z - 0.1))}
-            className="zoom-btn"
-            title="Zoom Out"
-            type="button"
-          >
-            -
-          </button>
-          <span className="zoom-label">{Math.round(zoom * 100)}%</span>
-          <button
-            onClick={() => setZoom(z => Math.min(2.0, typeof z === 'function' ? (z as any)(zoom) : z + 0.1))}
-            className="zoom-btn"
-            title="Zoom In"
-            type="button"
-          >
-            +
-          </button>
-          <button
-            onClick={() => setZoom(1.0)}
-            className="zoom-btn-reset"
-            title="Reset Zoom"
-            type="button"
-          >
-            Reset
-          </button>
-        </div>
+      {/* Zoom controls floating */}
+      <div className="zoom-controls-floating">
+        <button
+          onClick={() => setZoom(z => Math.max(0.25, typeof z === 'function' ? (z as any)(zoom) : z - 0.1))}
+          className="zoom-btn"
+          title="Zoom Out"
+          type="button"
+        >
+          -
+        </button>
+        <span className="zoom-label">{Math.round(zoom * 100)}%</span>
+        <button
+          onClick={() => setZoom(z => Math.min(2.0, typeof z === 'function' ? (z as any)(zoom) : z + 0.1))}
+          className="zoom-btn"
+          title="Zoom In"
+          type="button"
+        >
+          +
+        </button>
+        <button
+          onClick={() => setZoom(1.0)}
+          className="zoom-btn-reset"
+          title="Reset Zoom"
+          type="button"
+        >
+          Reset
+        </button>
       </div>
 
       <TilingPreviewModal
